@@ -909,20 +909,7 @@ function FuelingDialog({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
-              <div className="col-span-12 rounded-lg bg-muted/40 p-3">
-                <Label className="text-xs">Responsabilidade deste item</Label>
-                <RadioGroup value={it.responsibility ?? responsibility} onValueChange={(v) => updateItem(idx, { responsibility: v as ExpenseResponsibility })} className="mt-2 flex flex-wrap gap-3">
-                  <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="minha" /> Minha despesa</label>
-                  <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="desconto" /> Frigorífico desconta</label>
-                  <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="ressarcir" /> Frigorífico ressarce</label>
-                </RadioGroup>
-                <span className="mt-2 block text-xs text-muted-foreground">
-                  Subtotal:{" "}
-                  {formatBRL(
-                    Number(it.quantity || 0) * Number(it.unitPrice || 0) - Number(it.discount || 0),
-                  )}
-                </span>
-              </div>
+
             </div>
           ))}
         </div>
