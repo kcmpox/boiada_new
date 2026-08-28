@@ -498,9 +498,6 @@ function FuelingsPage() {
                             {it.discount ? ` - ${formatBRL(it.discount)}` : ""} ={" "}
                             {formatBRL(it.quantity * it.unitPrice - (it.discount || 0))}
                           </span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {FUEL_RESP_LABEL[itemResponsibility(f, it)]}
-                          </Badge>
                         </li>
                       ))}
                     </ul>
