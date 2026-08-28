@@ -22,6 +22,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -37,7 +38,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { X, User as UserIcon, Plus, Trash2, FileDown, Wallet, Gift, HandCoins, CircleCheck as CheckCircle2, Clock, TrendingDown, TrendingUp, CircleAlert as AlertCircle, RefreshCw, Code as Code2 } from "lucide-react";
+import { X, User as UserIcon, Plus, Trash2, FileDown, Wallet, Gift, HandCoins, CircleCheck as CheckCircle2, Clock, TrendingDown, TrendingUp, CircleAlert as AlertCircle, RefreshCw, Code as Code2, Info } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildPdfDoc,
@@ -357,7 +358,8 @@ export function CommissionsSection() {
       });
 
       // --- Vales ---
-      content.push(pdfSectionTitle("Vales"));
+      content.push(pdfSectionTitle("Vales e origem dos saldos"));
+      content.push({ text: "Vales do período anterior: saldo que não foi descontado em pagamentos anteriores e foi carregado para este período. Vales acumulados no período: lançamentos realizados entre o último pagamento e esta data.", fontSize: 9, color: "666666", margin: [0, 0, 0, 6] });
       content.push({
         table: {
           widths: ["*", "auto"],
@@ -402,7 +404,10 @@ export function CommissionsSection() {
       content.push({
         table: {
           widths: ["*", "auto"],
-          body: [["Ajuda de custo acumulada no período", formatBRL(payment.ajudaCusto)]],
+          body: [
+            ["Ajuda de custo acumulada no período", formatBRL(payment.ajudaCusto)],
+            ...card.allEntriesSinceLastPayment.filter((entry) => entry.type === "ajuda_custo" && payment.entryIds?.includes(entry.id)).map((entry) => [`Paga em ${formatDateBR(entry.date)}${entry.description ? ` — ${entry.description}` : ""}`, formatBRL(entry.amount)]),
+          ],
         },
         layout: pdfTableLayout,
         fontSize: 10,
@@ -845,13 +850,11 @@ function PayCommissionDialog({
 }) {
   const [commissionPayments, setCommissionPayments] = useCommissionPayments();
   const [, setEntries] = useDriverEntries();
-  const [valeDeducted, setValeDeducted] = useState(() => {
-    const vales =
-      card.allEntriesSinceLastPayment
-        .filter((e) => e.type === "vale")
-        .reduce((s, e) => s + e.amount, 0) + card.previousCarriedVales;
-    return String(vales);
-  });
+  const currentVales = useMemo(() => card.allEntriesSinceLastPayment.filter((e) => e.type === "vale"), [card.allEntriesSinceLastPayment]);
+  const [selectedValeIds, setSelectedValeIds] = useState<string[]>(() => currentVales.map((entry) => entry.id));
+  const [previousValeSelected, setPreviousValeSelected] = useState(card.previousCarriedVales > 0);
+  const [forgivenValeIds, setForgivenValeIds] = useState<string[]>([]);
+  const [customValeDiscount, setCustomValeDiscount] = useState("");
   const [paidAmountInput, setPaidAmountInput] = useState("");
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
   const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().slice(0, 10));
@@ -868,9 +871,9 @@ function PayCommissionDialog({
   const visibleManualCommissionsTotal = visibleEntries
     .filter((e) => e.type === "comissao")
     .reduce((s, e) => s + e.amount, 0);
-  const visibleValesTotal =
-    visibleEntries.filter((e) => e.type === "vale").reduce((s, e) => s + e.amount, 0) +
-    card.previousCarriedVales;
+  const selectedCurrentVales = currentVales.filter((entry) => selectedValeIds.includes(entry.id) && !forgivenValeIds.includes(entry.id));
+  const selectedValesTotal = selectedCurrentVales.reduce((sum, entry) => sum + entry.amount, 0) + (previousValeSelected ? card.previousCarriedVales : 0);
+  const forgivenValesTotal = currentVales.filter((entry) => forgivenValeIds.includes(entry.id)).reduce((sum, entry) => sum + entry.amount, 0);
   const { consumed: visibleAjudaCusto, excess: ajudaCustoExcess, consumedEntryIds, partialEntry } =
     capAjudaCusto(visibleEntries, ajudaCustoMax, 0);
   const visibleDescontosTotal = visibleEntries
@@ -881,12 +884,13 @@ function PayCommissionDialog({
     .reduce((s, e) => s + e.amount, 0);
 
   const totalCommission = visibleCommission + visibleManualCommissionsTotal;
-  const totalVales = visibleValesTotal;
   const ajudaCusto = visibleAjudaCusto;
   const ajudaOk = ajudaCusto >= ajudaCustoMax;
 
-  const valeD = Math.min(Number(valeDeducted) || 0, totalVales);
-  const remainingVales = Math.max(0, totalVales - valeD);
+  const totalVales = currentVales.reduce((sum, entry) => sum + entry.amount, 0) + card.previousCarriedVales;
+  const customValeAmount = Math.max(0, Number(customValeDiscount.replace(",", ".")) || 0);
+  const valeD = Math.min(customValeDiscount.trim() ? customValeAmount : selectedValesTotal, totalVales);
+  const remainingVales = Math.max(0, totalVales - valeD - forgivenValesTotal);
 
   // Total the driver earned this period, before any vale deduction
   const grossEarnings =
@@ -953,7 +957,10 @@ function PayCommissionDialog({
       descontosTotal: visibleDescontosTotal,
       valesTotal: totalVales,
       valeDeducted: valeD,
+      selectedValeEntryIds: selectedValeIds,
+      forgivenValeEntryIds: forgivenValeIds,
       ajudaCusto,
+
       remainingVales,
       previousCarriedVales: card.previousCarriedVales,
       previousShortfall: card.previousShortfall,
@@ -983,7 +990,7 @@ function PayCommissionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-md">
+      <DialogContent className="flex max-h-[94vh] w-[calc(100vw-2rem)] flex-col sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Pagar comissão — {card.driverName}</DialogTitle>
         </DialogHeader>
@@ -1017,55 +1024,27 @@ function PayCommissionDialog({
           <div>
             <Label>Data final do período</Label>
             <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Apenas as viagens até esta data entram neste pagamento. Vales, bônus, descontos,
-              ajudas de custo e comissões manuais em aberto são incluídos independente da data.
-            </p>
+            <Info className="mt-1 size-3.5 text-muted-foreground" aria-label="As viagens até esta data entram no pagamento; demais lançamentos em aberto seguem para o cálculo." />
           </div>
 
           <div>
             <Label>Data do pagamento</Label>
             <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Data em que o pagamento foi efetivado ao motorista.
-            </p>
+            <Info className="mt-1 size-3.5 text-muted-foreground" aria-label="Data em que o pagamento foi efetivado ao motorista." />
           </div>
 
-          <div>
-            <Label>Vale a descontar (R$)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              max={totalVales}
-              value={valeDeducted}
-              onChange={(e) => setValeDeducted(e.target.value)}
-              placeholder={String(totalVales)}
-            />
-            <div className="mt-1 flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 text-xs"
-                onClick={() => setValeDeducted(String(totalVales))}
-              >
-                Descontar tudo
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 text-xs"
-                onClick={() => setValeDeducted("0")}
-              >
-                Não descontar
-              </Button>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Máximo: {formatBRL(totalVales)}. Descontar um vale reduz o saldo a pagar. O que não
-              for descontado ({formatBRL(remainingVales)}) fica para o próximo pagamento.
-            </p>
+          <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <section className="rounded-xl border bg-muted/20 p-4">
+              <div className="mb-3 flex items-center justify-between"><div><h3 className="font-semibold">Viagens do período</h3><p className="text-xs text-muted-foreground">Perdas ficam destacadas para conferência.</p></div><Badge variant="secondary">{visibleTrips.length}</Badge></div>
+              <div className="flex max-h-52 flex-col gap-2 overflow-y-auto">
+                {visibleTrips.map((trip) => <div key={trip.id} className={trip.lostAnimals > 0 ? "rounded-lg border border-destructive/50 bg-destructive/10 p-3" : "rounded-lg border bg-background p-3"}><div className="flex items-center justify-between gap-2 text-sm font-medium"><span>{formatDateBR(trip.date)} · {trip.origin}</span><span>{formatBRL(trip.finalValue)}</span></div><div className="mt-1 text-xs text-muted-foreground">{trip.destination ?? "Destino não informado"}{trip.lostAnimals > 0 && <span className="ml-2 font-semibold text-destructive">Perda: {trip.lostAnimals} animal(is) · {formatBRL(trip.lostAnimals * trip.lostAnimalValue)}</span>}</div></div>)}
+              </div>
+            </section>
+            <section className="rounded-xl border bg-muted/20 p-4"><div className="mb-3"><h3 className="font-semibold">Vales para este pagamento</h3><p className="text-xs text-muted-foreground">Selecione os vales a descontar. Os demais seguem para o próximo período.</p></div><div className="flex flex-col gap-2">
+              {card.previousCarriedVales > 0 && <div className="flex items-center gap-3 rounded-lg border bg-background p-3"><Checkbox checked={previousValeSelected} onCheckedChange={(checked) => setPreviousValeSelected(checked === true)} /><div className="flex-1 text-sm"><p className="font-medium">Vales do período anterior</p><p className="text-xs text-muted-foreground">Saldo carregado de pagamentos anteriores</p></div><span className="font-semibold">{formatBRL(card.previousCarriedVales)}</span></div>}
+              {currentVales.map((entry) => { const selected = selectedValeIds.includes(entry.id) && !forgivenValeIds.includes(entry.id); return <div key={entry.id} className="flex items-center gap-3 rounded-lg border bg-background p-3"><Checkbox checked={selected} onCheckedChange={(checked) => setSelectedValeIds((ids) => checked ? [...new Set([...ids, entry.id])] : ids.filter((id) => id !== entry.id))} /><div className="min-w-0 flex-1 text-sm"><p className="font-medium">{entry.description || "Vale"}</p><p className="text-xs text-muted-foreground">{formatDateBR(entry.date)}{forgivenValeIds.includes(entry.id) ? " · Perdoado" : ""}</p></div><span className="font-semibold">{formatBRL(entry.amount)}</span><Button type="button" variant="ghost" size="sm" onClick={() => setForgivenValeIds((ids) => ids.includes(entry.id) ? ids.filter((id) => id !== entry.id) : [...ids, entry.id])}>{forgivenValeIds.includes(entry.id) ? "Desfazer perdão" : "Perdoar"}</Button></div>; })}
+              <div className="flex justify-between border-t pt-3 text-sm"><span>Selecionado para desconto</span><strong className="text-destructive">{formatBRL(valeD)}</strong></div><div className="flex justify-between text-sm"><span>Restante para o próximo mês</span><strong>{formatBRL(remainingVales)}</strong></div><div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><span>Perdoados: {formatBRL(forgivenValesTotal)}</span><Info className="size-3.5" aria-label="Vales perdoados não serão descontados nem carregados" /></div><div className="mt-3 flex items-center gap-2"><Label htmlFor="custom-vale-discount" className="text-xs">Desconto personalizado</Label><Input id="custom-vale-discount" type="number" min="0" max={totalVales} step="0.01" value={customValeDiscount} onChange={(e) => setCustomValeDiscount(e.target.value)} placeholder="0,00" className="h-8 w-32" /></div>
+            </div></section>
           </div>
 
           <div className="rounded-md border border-border bg-secondary/40 p-3 text-sm">

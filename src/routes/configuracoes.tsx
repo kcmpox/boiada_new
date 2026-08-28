@@ -13,6 +13,7 @@ import {
   useCommissionPayments,
   useDriverEntries,
   useSettings,
+  useNotes,
   uid,
   formatBRL,
   formatDateBR,
@@ -72,6 +73,7 @@ import {
   Sparkles,
   CheckCircle2,
   CircleDot,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -239,7 +241,7 @@ export const Route = createFileRoute("/configuracoes")({
   component: ConfigPage,
 });
 
-type SectionKey = "tabelas" | "historico" | "backup" | "aparencia";
+type SectionKey = "tabelas" | "historico" | "backup" | "aparencia" | "anotacoes";
 
 const NAV_ITEMS: {
   key: SectionKey;
@@ -270,6 +272,12 @@ const NAV_ITEMS: {
     label: "Aparência",
     icon: Palette,
     desc: "Tema, sons e preferências",
+  },
+  {
+    key: "anotacoes",
+    label: "Anotações",
+    icon: StickyNote,
+    desc: "Bugs, ideias e melhorias",
   },
 ];
 
@@ -350,6 +358,7 @@ function ConfigPage() {
           {section === "historico" && <HistorySection />}
           {section === "backup" && <BackupSection />}
           {section === "aparencia" && <AppearanceSection />}
+          {section === "anotacoes" && <NotesSection />}
         </div>
       </div>
     </div>
@@ -1812,6 +1821,89 @@ function BackupSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </SectionShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ANOTAÇÕES
+// ---------------------------------------------------------------------------
+
+function NotesSection() {
+  const [notes, setNotes] = useNotes();
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setTitle("");
+    setContent("");
+    setEditingId(null);
+  };
+
+  const saveNote = () => {
+    if (!title.trim() || !content.trim()) {
+      toast.error("Preencha o título e o texto da anotação.");
+      return;
+    }
+    const now = new Date().toISOString();
+    if (editingId) {
+      setNotes((current) => current.map((note) => note.id === editingId ? { ...note, title: title.trim(), content: content.trim(), updatedAt: now } : note));
+      toast.success("Anotação atualizada");
+    } else {
+      setNotes((current) => [{ id: uid(), title: title.trim(), content: content.trim(), createdAt: now, updatedAt: now }, ...current]);
+      toast.success("Anotação salva");
+    }
+    resetForm();
+  };
+
+  const editNote = (id: string) => {
+    const note = notes.find((item) => item.id === id);
+    if (!note) return;
+    setEditingId(note.id);
+    setTitle(note.title);
+    setContent(note.content);
+  };
+
+  const removeNote = (id: string) => {
+    if (!window.confirm("Excluir esta anotação?")) return;
+    setNotes((current) => current.filter((note) => note.id !== id));
+    if (editingId === id) resetForm();
+    toast.success("Anotação removida");
+  };
+
+  return (
+    <SectionShell title="Anotações" description="Registre bugs, ideias e melhorias para a aplicação." icon={StickyNote}>
+      <Panel>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold">{editingId ? "Editar anotação" : "Nova anotação"}</h3>
+            <p className="text-xs text-muted-foreground">Suas anotações ficam salvas neste navegador.</p>
+          </div>
+          {editingId && <Button variant="ghost" size="sm" onClick={resetForm}>Cancelar</Button>}
+        </div>
+        <div className="space-y-3">
+          <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título da anotação" aria-label="Título da anotação" />
+          <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Descreva o bug ou a ideia..." aria-label="Texto da anotação" rows={5} className="flex w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
+          <div className="flex justify-end"><Button onClick={saveNote}><Save className="mr-2 h-4 w-4" />{editingId ? "Salvar alterações" : "Salvar anotação"}</Button></div>
+        </div>
+      </Panel>
+      <div className="space-y-3">
+        {notes.length === 0 ? (
+          <Panel className="flex flex-col items-center justify-center py-12 text-center">
+            <StickyNote className="mb-3 h-10 w-10 text-muted-foreground/40" />
+            <h3 className="font-semibold">Nenhuma anotação ainda</h3>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">Use este espaço para guardar ideias de recursos e problemas encontrados.</p>
+          </Panel>
+        ) : notes.map((note) => (
+          <Panel key={note.id} className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0"><h3 className="font-semibold text-foreground">{note.title}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{note.content}</p><p className="mt-3 text-xs text-muted-foreground">Atualizada em {formatDateBR(note.updatedAt)}</p></div>
+              <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" onClick={() => editNote(note.id)} aria-label={`Editar ${note.title}`}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => removeNote(note.id)} aria-label={`Excluir ${note.title}`}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+            </div>
+          </Panel>
+        ))}
+      </div>
     </SectionShell>
   );
 }
