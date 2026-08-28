@@ -49,7 +49,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Calendar, FileDown, Banknote, Code as Code2, Download, Upload, FileText } from "lucide-react";
+import { Plus, Trash2, Calendar, FileDown, Banknote, Code as Code2, Download, Upload, FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildPdfDoc,
@@ -124,7 +124,7 @@ function totalFuel(f: Fueling) {
 function ReceiptsTab() {
   const [payments, setPayments] = usePayments();
   const [trips] = useActiveTrips();
-  const [fuelings] = useFuelings();
+  const [fuelings, setFuelings] = useFuelings();
   const [expenses] = useExpenses();
   const [tolls] = useTolls();
   const [trucks] = useTrucks();
@@ -568,6 +568,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [destFilter, setDestFilter] = useState<string>("__all__");
   const [editingMinuta, setEditingMinuta] = useState<string | null>(null);
   const [minutaInput, setMinutaInput] = useState("");
+  const [editingCte, setEditingCte] = useState<string | null>(null);
+  const [cteInput, setCteInput] = useState("");
 
   const lockedTrips = useMemo(() => new Set(payments.flatMap((p) => p.tripIds)), [payments]);
   const lockedFuel = useMemo(() => new Set(payments.flatMap((p) => p.fuelingIds)), [payments]);
@@ -646,6 +648,10 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [expIds, setExpIds] = useState<string[]>([]);
   const [tollIds, setTollIds] = useState<string[]>([]);
   const [tripReceivedValues, setTripReceivedValues] = useState<Record<string, string>>({});
+  const [tollReceivedValues, setTollReceivedValues] = useState<Record<string, string>>({});
+  const [fuelingItemIds, setFuelingItemIds] = useState<string[]>([]);
+  const [fuelingRefs, setFuelingRefs] = useState<Record<string, { minuta: string; cte: string }>>({});
+
   const [receivedValue, setReceivedValue] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -668,20 +674,20 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const expRess = selExp
     .filter((e) => e.responsibility === "ressarcir")
     .reduce((s, e) => s + e.value, 0);
-  const tollDesc = selTolls
-    .filter((t) => t.responsibility === "desconto")
-    .reduce((s, t) => s + t.value, 0);
-  const tollRess = selTolls
-    .filter((t) => t.responsibility === "ressarcir")
-    .reduce((s, t) => s + t.value, 0);
+  const tollAmount = (t: Toll) => {
+    const raw = tollReceivedValues[t.id];
+    return Math.min(t.value, Math.max(0, raw === undefined || raw === "" ? t.value : Number(raw) || 0));
+  };
+  const tollDesc = selTolls.filter((t) => t.responsibility === "desconto").reduce((s, t) => s + tollAmount(t), 0);
+  const tollRess = selTolls.filter((t) => t.responsibility === "ressarcir").reduce((s, t) => s + tollAmount(t), 0);
   const reimbursedValue = fuelRess + expRess + tollRess;
   const deductedValue = fuelDesc + expDesc + tollDesc;
   const expectedValue = grossValue + reimbursedValue - rentValue - deductedValue;
 
   // Sum of per-trip received values
   const perTripTotal = useMemo(
-    () => Object.values(tripReceivedValues).reduce((s, v) => s + (Number(v) || 0), 0),
-    [tripReceivedValues],
+    () => selTrips.reduce((s, t) => s + (tripReceivedValues[t.id] === undefined || tripReceivedValues[t.id] === "" ? t.finalValue : Number(tripReceivedValues[t.id]) || 0), 0),
+    [selTrips, tripReceivedValues],
   );
 
   const toggle = (id: string, arr: string[], setArr: (v: string[]) => void) => {
@@ -732,6 +738,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       const v = tripReceivedValues[t.id];
       if (v !== undefined && v !== "") {
         tripRecv[t.id] = Number(v) || 0;
+      } else {
+        tripRecv[t.id] = t.finalValue;
       }
     }
     const p: Payment = {
@@ -749,6 +757,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       expectedValue,
       receivedValue: rv,
       tripReceivedValues: Object.keys(tripRecv).length > 0 ? tripRecv : undefined,
+      tollReceivedValues: Object.keys(tollReceivedValues).length > 0 ? Object.fromEntries(Object.entries(tollReceivedValues).map(([id, value]) => [id, Number(value) || 0])) : undefined,
+      fuelingItemIds: fuelingItemIds.length > 0 ? fuelingItemIds : undefined,
       notes: notes.trim() || undefined,
     };
     setPayments((prev) => [...prev, p]);
@@ -774,6 +784,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       const v = tripReceivedValues[t.id];
       if (v !== undefined && v !== "") {
         tripRecv[t.id] = Number(v) || 0;
+      } else {
+        tripRecv[t.id] = t.finalValue;
       }
     }
     const registry = {
@@ -961,6 +973,16 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
                     <span>Líquido: {formatBRL(tripNet)}</span>
                     {t.minuta && <span>Minuta: {t.minuta}</span>}
                   </div>
+                  {editingCte === t.id ? (
+                    <div className="mt-1 flex items-center gap-1">
+                      <Input className="h-7 text-xs" placeholder="Número da CTe" value={cteInput} onChange={(e) => setCteInput(e.target.value)} autoFocus />
+                      <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => { setTrips((prev) => prev.map((trip) => trip.id === t.id ? { ...trip, cte: cteInput.trim() || undefined } : trip)); setEditingCte(null); setCteInput(""); }}>OK</Button>
+                    </div>
+                  ) : (
+                    <button type="button" className="mt-0.5 flex items-center gap-1 text-xs text-primary hover:underline" onClick={() => { setEditingCte(t.id); setCteInput(t.cte ?? ""); }}>
+                      <FileText className="h-3 w-3" /> {t.cte ? "Editar CTe" : "Inserir CTe"}
+                    </button>
+                  )}
                   {isEditingMinuta ? (
                     <div className="mt-1 flex items-center gap-1">
                       <Input
@@ -1065,24 +1087,18 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
             )
           }
         >
-          {openFuel.map((f) => (
-            <Row
-              key={f.id}
-              checked={fuelIds.includes(f.id)}
-              onCheckedChange={() => toggle(f.id, fuelIds, setFuelIds)}
-              left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`}
-              middle="Posto"
-              right={
-                <span
-                  className={
-                    fuelResponsibility(f) === "ressarcir" ? "text-emerald-600" : "text-destructive"
-                  }
-                >
-                  {fuelResponsibility(f) === "ressarcir" ? "+" : "-"} {formatBRL(totalFuel(f))}
-                </span>
-              }
-            />
-          ))}
+          {openFuel.flatMap((f) => f.items.map((item, index) => {
+            const itemId = `${f.id}:${index}`;
+            const responsibility = item.responsibility ?? f.responsibility ?? (f.deductFromPayment ? "desconto" : "ressarcir");
+            const amount = Math.max(0, item.quantity * item.unitPrice - (item.discount || 0));
+            const selected = fuelingItemIds.includes(itemId);
+            return <Row key={itemId} checked={selected} onCheckedChange={() => {
+              const itemIds = f.items.map((_, itemIndex) => `${f.id}:${itemIndex}`);
+              const shouldSelect = !itemIds.every((id) => fuelingItemIds.includes(id));
+              setFuelingItemIds((prev) => shouldSelect ? Array.from(new Set([...prev, ...itemIds])) : prev.filter((id) => !itemIds.includes(id)));
+              setFuelIds((prev) => shouldSelect ? Array.from(new Set([...prev, f.id])) : prev.filter((id) => id !== f.id));
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2"><span>{item.description}</span><div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder={f.tripId ? (trips.find((t) => t.id === f.tripId)?.minuta ?? "Minuta") : "Minuta"} value={fuelingRefs[f.id]?.minuta ?? trips.find((t) => t.id === f.tripId)?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder={f.tripId ? (trips.find((t) => t.id === f.tripId)?.cte ?? "CTe") : "CTe"} value={fuelingRefs[f.id]?.cte ?? trips.find((t) => t.id === f.tripId)?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); if (!query) return toast.error("Informe a minuta ou CTe."); const matches = trips.filter((t) => t.minuta?.toLowerCase() === query || t.cte?.toLowerCase() === query); if (matches.length === 1) { setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); toast.success("Viagem vinculada ao abastecimento."); } else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada. Selecione a viagem no cadastro do abastecimento."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div></div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+          }))}
         </SelectableList>
 
         {/* Manutenções */}
@@ -1151,6 +1167,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
                   }
                 >
                   {t.responsibility === "ressarcir" ? "+" : "-"} {formatBRL(t.value)}
+                  {tollIds.includes(t.id) && <Input type="number" min="0" max={t.value} step="0.01" className="ml-2 inline-flex h-7 w-24" placeholder="Recebido" value={tollReceivedValues[t.id] ?? ""} onChange={(e) => setTollReceivedValues((prev) => ({ ...prev, [t.id]: e.target.value }))} />}
                 </span>
               }
             />
@@ -1179,8 +1196,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" size="lg" onClick={downloadRegistry}>
-            <Download className="mr-1 h-4 w-4" /> Baixar Registro
+          <Button type="button" variant="outline" size="icon" onClick={downloadRegistry} title="Baixar registro" aria-label="Baixar registro">
+            <Download className="h-4 w-4" />
           </Button>
           <Button type="submit" size="lg">
             <Banknote className="mr-1 h-4 w-4" /> Salvar recebimento
@@ -1197,6 +1214,7 @@ function SelectableList({
   count,
   totalLabel,
   total,
+  extra,
   allChecked,
   onToggleAll,
   children,
@@ -1206,6 +1224,7 @@ function SelectableList({
   count: number;
   totalLabel: string;
   total: number;
+  extra?: React.ReactNode;
   allChecked: boolean;
   onToggleAll: () => void;
   children: React.ReactNode;
@@ -1216,7 +1235,8 @@ function SelectableList({
     <div className="overflow-hidden rounded-xl border border-border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary/50 px-4 py-2.5">
         <p className="text-sm font-semibold">{title}</p>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-muted-foreground">
+          {extra}
           <span>
             {count} selecionado(s) • {totalLabel}: {formatBRL(total)}
           </span>

@@ -118,6 +118,7 @@ export interface Fueling {
   date: string;
   truckId: string;
   driverId?: string;
+  tripId?: string;
   odometer: number;
   items: FuelingItem[];
   deductFromPayment: boolean;
@@ -125,6 +126,7 @@ export interface Fueling {
   generalDiscount?: number;
   nfe?: string;
   attachments?: Attachment[];
+  archived?: boolean;
 }
 
 export type ExpenseResponsibility = "minha" | "desconto" | "ressarcir";
@@ -140,6 +142,7 @@ export interface Expense {
   responsibility: ExpenseResponsibility;
   notes?: string;
   attachments?: Attachment[];
+  archived?: boolean;
 }
 
 export interface Toll {
@@ -155,6 +158,7 @@ export interface Toll {
   responsibility: ExpenseResponsibility;
   notes?: string;
   attachments?: Attachment[];
+  archived?: boolean;
 }
 
 export type CardinalDirection = "N" | "S" | "L" | "O" | "N/S" | "L/O";
@@ -188,6 +192,8 @@ export interface Payment {
   receivedValue: number;
   /** Per-trip received values (for tracking individual payments). */
   tripReceivedValues?: Record<string, number>;
+  tollReceivedValues?: Record<string, number>;
+  fuelingItemIds?: string[];
   notes?: string;
 }
 

@@ -6,6 +6,7 @@ import {
   useDrivers,
   usePayments,
   useSettings,
+  useActiveTrips,
   uid,
   formatBRL,
   formatDateBR,
@@ -37,8 +38,9 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Code as Code2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Archive, RotateCcw, Code as Code2, Search, MapPin, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
 import type { Attachment } from "@/lib/storage";
 import { Pagination, PAGE_SIZE } from "@/components/Pagination";
@@ -99,7 +101,7 @@ function FuelingsPage() {
   const [dateTo, setDateTo] = useState("");
   const [driverFilter, setDriverFilter] = useState<string>("__all__");
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
-  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago">("__all__");
+  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago" | "arquivado">("__all__");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
@@ -113,6 +115,8 @@ function FuelingsPage() {
       if (truckFilter !== "__all__" && f.truckId !== truckFilter) return false;
       if (statusFilter === "aberto" && lockedIds.has(f.id)) return false;
       if (statusFilter === "pago" && !lockedIds.has(f.id)) return false;
+      if (statusFilter === "arquivado" && !f.archived) return false;
+      if (statusFilter !== "arquivado" && f.archived) return false;
       return true;
     });
   }, [fuelings, dateFrom, dateTo, driverFilter, truckFilter, statusFilter, lockedIds]);
@@ -360,22 +364,33 @@ function FuelingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Status</Label>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === "arquivado" ? "__all__" : "arquivado")}
+            className={cn(
+              "group flex min-w-[140px] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0",
+              statusFilter === "arquivado"
+                ? "border-primary/30 bg-primary/5 shadow-sm"
+                : "border-transparent hover:border-border hover:bg-muted/50",
+            )}
+          >
+            <span
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                statusFilter === "arquivado"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/15",
+              )}
             >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos</SelectItem>
-                <SelectItem value="aberto">Em aberto</SelectItem>
-                <SelectItem value="pago">Recebidos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <Archive className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="font-medium leading-tight">Arquivados</div>
+              <div className="truncate text-xs text-muted-foreground">
+                Abastecimentos arquivados — {statusFilter === "arquivado" ? "voltar" : "visualizar"}
+              </div>
+            </div>
+          </button>
           {(dateFrom ||
             dateTo ||
             driverFilter !== "__all__" ||
@@ -420,12 +435,17 @@ function FuelingsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {paged.map((f) => {
-            const truck = trucks.find((x) => x.id === f.truckId);
+          {paged.flatMap((source) => {
+            const groups = Array.from(new Set(source.items.map((it) => itemResponsibility(source, it))));
+            return groups.map((responsibility) => ({ ...source, id: `${source.id}::${responsibility}`, items: source.items.filter((it) => itemResponsibility(source, it) === responsibility) }));
+          }).map((f) => {
+            const sourceId = f.id.split("::")[0];
+            const source = fuelings.find((item) => item.id === sourceId) ?? f;
+            const truck = trucks.find((x) => x.id === source.truckId);
             const driver = drivers.find((x) => x.id === f.driverId);
             const total = totalOf(f);
             const liters = litersOf(f);
-            const prev = prevOdometer(f);
+            const prev = prevOdometer(source);
             const kml =
               prev != null && liters > 0 && f.odometer > prev ? (f.odometer - prev) / liters : null;
             const locked = lockedIds.has(f.id);
@@ -496,9 +516,6 @@ function FuelingsPage() {
                             {it.discount ? ` - ${formatBRL(it.discount)}` : ""} ={" "}
                             {formatBRL(it.quantity * it.unitPrice - (it.discount || 0))}
                           </span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {FUEL_RESP_LABEL[itemResponsibility(f, it)]}
-                          </Badge>
                         </li>
                       ))}
                     </ul>
@@ -529,7 +546,7 @@ function FuelingsPage() {
                       size="icon"
                       disabled={locked}
                       onClick={() => {
-                        setEditing(f);
+                        setEditing(source);
                         setOpen(true);
                       }}
                     >
@@ -541,7 +558,7 @@ function FuelingsPage() {
                         size="icon"
                         title="Editar JSON"
                         onClick={() => {
-                          setJsonEditItem(f);
+                          setJsonEditItem(source);
                           setJsonEditOpen(true);
                         }}
                       >
@@ -552,7 +569,19 @@ function FuelingsPage() {
                       variant="ghost"
                       size="icon"
                       disabled={locked}
-                      onClick={() => remove(f.id)}
+                      title={source.archived ? "Desarquivar" : "Arquivar"}
+                      onClick={() => {
+                        setFuelings((prev) => prev.map((item) => item.id === source.id ? { ...item, archived: !item.archived } : item));
+                        toast.success(source.archived ? "Abastecimento desarquivado" : "Abastecimento arquivado");
+                      }}
+                    >
+                      {source.archived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={locked}
+                      onClick={() => remove(source.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -596,6 +625,7 @@ function FuelingDialog({
   const [, setFuelings] = useFuelings();
   const [trucks] = useTrucks();
   const [drivers] = useDrivers();
+  const [trips] = useActiveTrips();
 
   const availableDrivers = useMemo(
     () => drivers.filter((d) => d.active || d.id === fueling?.driverId),
@@ -607,6 +637,8 @@ function FuelingDialog({
   );
   const [truckId, setTruckId] = useState(fueling?.truckId ?? trucks[0]?.id ?? "");
   const [driverId, setDriverId] = useState(fueling?.driverId ?? availableDrivers[0]?.id ?? "");
+  const [tripId, setTripId] = useState(fueling?.tripId ?? "");
+  const [tripRef, setTripRef] = useState("");
   const [odometer, setOdometer] = useState(fueling ? String(fueling.odometer) : "");
   const [responsibility, setResponsibility] = useState<ExpenseResponsibility>(
     fueling ? fuelResponsibility(fueling) : "desconto",
@@ -677,6 +709,11 @@ function FuelingDialog({
       toast.error("Preencha pelo menos um item com quantidade/valor.");
       return;
     }
+    const normalizedRef = tripRef.trim().toLowerCase();
+    const matches = normalizedRef ? trips.filter((trip) => trip.cte?.toLowerCase() === normalizedRef || trip.minuta?.toLowerCase() === normalizedRef) : [];
+    if (normalizedRef && matches.length > 1) toast.warning("Mais de uma viagem possui essa minuta/CTE. Selecione a viagem correta.");
+    const resolvedTripId = matches.length === 1 ? matches[0].id : tripId;
+    if (matches.length === 1) setTripId(resolvedTripId);
     const finalOdometer = odometer !== "" ? Number(odometer) : (lastOdometer ?? 0);
     const genDisc = Number(generalDiscount) || 0;
     const next: Fueling = {
@@ -684,6 +721,7 @@ function FuelingDialog({
       date: toBrasiliaISO(date),
       truckId,
       driverId: driverId || undefined,
+      tripId: resolvedTripId || undefined,
       odometer: finalOdometer,
       items: cleanItems,
       deductFromPayment: responsibility === "desconto",
@@ -703,10 +741,13 @@ function FuelingDialog({
 
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>{fueling ? "Editar abastecimento" : "Novo abastecimento"}</DialogTitle>
+      <DialogHeader className="rounded-xl bg-primary/5 p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Fuel className="h-5 w-5" /></span>
+          <div><DialogTitle className="text-xl">{fueling ? "Editar abastecimento" : "Novo abastecimento"}</DialogTitle><p className="text-sm text-muted-foreground">Registre o abastecimento e classifique cada item.</p></div>
+        </div>
       </DialogHeader>
-      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <div>
           <Label>Data e hora</Label>
           <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -743,6 +784,27 @@ function FuelingDialog({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label>Viagem vinculada</Label>
+          <Select value={tripId || "__none__"} onValueChange={(value) => setTripId(value === "__none__" ? "" : value)}>
+            <SelectTrigger><SelectValue placeholder="Selecione uma viagem" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sem vínculo</SelectItem>
+              {trips.map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.origin} → {trip.destination}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="mt-2 flex gap-2">
+            <Input value={tripRef} onChange={(e) => setTripRef(e.target.value)} placeholder="Minuta ou CTe" />
+            <Button type="button" size="icon" variant="outline" aria-label="Pesquisar viagem" title="Pesquisar viagem" onClick={() => {
+              const ref = tripRef.trim().toLowerCase();
+              const matches = ref ? trips.filter((trip) => trip.cte?.toLowerCase() === ref || trip.minuta?.toLowerCase() === ref) : [];
+              if (matches.length === 1) { setTripId(matches[0].id); toast.success("Viagem encontrada"); }
+              else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada. Escolha no campo acima.");
+              else toast.error("Nenhuma viagem encontrada.");
+            }}><Search className="h-4 w-4" /></Button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Digite uma minuta ou CTe e pesquise para vincular.</p>
         </div>
         <div>
           <Label>Hodômetro (km)</Label>
@@ -847,38 +909,7 @@ function FuelingDialog({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
-              <div className="col-span-12 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs whitespace-nowrap">Responsável</Label>
-                  <Select
-                    value={it.responsibility ?? "__default__"}
-                    onValueChange={(v) =>
-                      updateItem(idx, {
-                        responsibility:
-                          v === "__default__" ? undefined : (v as ExpenseResponsibility),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-56 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">
-                        Padrão do registro ({FUEL_RESP_LABEL[responsibility]})
-                      </SelectItem>
-                      <SelectItem value="minha">Minha despesa</SelectItem>
-                      <SelectItem value="desconto">Frigorífico desconta</SelectItem>
-                      <SelectItem value="ressarcir">Frigorífico ressarce</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Subtotal:{" "}
-                  {formatBRL(
-                    Number(it.quantity || 0) * Number(it.unitPrice || 0) - Number(it.discount || 0),
-                  )}
-                </span>
-              </div>
+
             </div>
           ))}
         </div>

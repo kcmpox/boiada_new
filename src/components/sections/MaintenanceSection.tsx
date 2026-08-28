@@ -49,6 +49,8 @@ import {
   User as UserIcon,
   Lock,
   Code as Code2,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
@@ -88,7 +90,7 @@ function ExpensesPage() {
   const [dateTo, setDateTo] = useState("");
   const [driverFilter, setDriverFilter] = useState<string>("__all__");
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
-  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago">("__all__");
+  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago" | "arquivado">("__all__");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(
@@ -107,6 +109,8 @@ function ExpensesPage() {
         if (truckFilter !== "__all__" && e.truckId !== truckFilter) return false;
         if (statusFilter === "aberto" && lockedIds.has(e.id)) return false;
         if (statusFilter === "pago" && !lockedIds.has(e.id)) return false;
+        if (statusFilter === "arquivado" && !e.archived) return false;
+        if (statusFilter !== "arquivado" && e.archived) return false;
         return true;
       }),
     [expenses, dateFrom, dateTo, driverFilter, truckFilter, statusFilter, lockedIds],
@@ -349,7 +353,7 @@ function ExpensesPage() {
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select
-                  value={statusFilter}
+                  value={statusFilter === "arquivado" ? "__all__" : statusFilter}
                   onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
                 >
                   <SelectTrigger className="w-40">
@@ -358,8 +362,8 @@ function ExpensesPage() {
                   <SelectContent>
                     <SelectItem value="__all__">Todos</SelectItem>
                     <SelectItem value="aberto">Em aberto</SelectItem>
-                    <SelectItem value="pago">Recebidos</SelectItem>
-                  </SelectContent>
+  <SelectItem value="pago">Recebidos</SelectItem>
+  </SelectContent>
                 </Select>
               </div>
               {(dateFrom ||
@@ -381,6 +385,33 @@ function ExpensesPage() {
                   <X className="mr-1 h-3 w-3" /> Limpar
                 </Button>
               )}
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === "arquivado" ? "__all__" : "arquivado")}
+                className={cn(
+                  "group flex min-w-[140px] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0",
+                  statusFilter === "arquivado"
+                    ? "border-primary/30 bg-primary/5 shadow-sm"
+                    : "border-transparent hover:border-border hover:bg-muted/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                    statusFilter === "arquivado"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/15",
+                  )}
+                >
+                  <Archive className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="font-medium leading-tight">Arquivadas</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    Manutenções arquivadas — {statusFilter === "arquivado" ? "voltar" : "visualizar"}
+                  </div>
+                </div>
+              </button>
               <div className="ml-auto text-right">
                 <p className="text-xs text-muted-foreground">{sorted.length} registro(s)</p>
                 <p className="text-lg font-bold text-primary">{formatBRL(totalValue)}</p>
@@ -437,7 +468,7 @@ function ExpensesPage() {
                           </span>
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <TruckIcon className="h-3 w-3" />
-                            {truck?.name ?? "—"} ({truck?.plate ?? "—"})
+                            {truck?.name ?? "��"} ({truck?.plate ?? "—"})
                           </span>
                           {driver && (
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -491,6 +522,18 @@ function ExpensesPage() {
                             <Code2 className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={locked}
+                          title={e.archived ? "Desarquivar" : "Arquivar"}
+                          onClick={() => {
+                            setExpenses((prev) => prev.map((item) => item.id === e.id ? { ...item, archived: !item.archived } : item));
+                            toast.success(e.archived ? "Manutenção desarquivada" : "Manutenção arquivada");
+                          }}
+                        >
+                          {e.archived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

@@ -149,6 +149,7 @@ export function CommissionsSection() {
       const finalizedPayments = driverPayments.filter((p) => p.finalized);
       const lastPayment = finalizedPayments[finalizedPayments.length - 1];
       const lastPeriodEnd = lastPayment?.periodEnd ?? lastPayment?.date ?? "";
+      const nextPeriodStart = lastPeriodEnd ? (() => { const d = new Date(`${lastPeriodEnd}T12:00:00`); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })() : "";
 
       const periodTrips = trips
         .filter((t) => t.driverId === driver.id && t.date > lastPeriodEnd)
@@ -187,7 +188,7 @@ export function CommissionsSection() {
         driverId: driver.id,
         driverName: driver.name,
         active: driver.active,
-        periodStart: lastPeriodEnd,
+        periodStart: nextPeriodStart,
         trips: periodTrips,
         tripIds: periodTrips.map((t) => t.id),
         commission,
@@ -699,8 +700,8 @@ function CommissionCard({
             .slice()
             .sort((a, b) => b.date.localeCompare(a.date))
             .map((e) => (
-              <div key={e.id} className="flex items-center justify-between py-1 text-xs">
-                <span className="flex items-center gap-1.5">
+              <div key={e.id} className="flex items-center gap-1 py-1 text-xs">
+                <span className="min-w-0 flex flex-1 items-center gap-1.5">
                   {e.type === "vale" && <Wallet className="h-3 w-3 text-destructive" />}
                   {e.type === "ajuda_custo" && <Gift className="h-3 w-3 text-amber-600" />}
                   {e.type === "desconto" && <TrendingDown className="h-3 w-3 text-destructive" />}
