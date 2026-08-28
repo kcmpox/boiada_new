@@ -38,7 +38,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Archive, RotateCcw, Code as Code2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Archive, RotateCcw, Code as Code2, Search, MapPin, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
@@ -741,10 +741,13 @@ function FuelingDialog({
 
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>{fueling ? "Editar abastecimento" : "Novo abastecimento"}</DialogTitle>
+      <DialogHeader className="rounded-xl bg-primary/5 p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Fuel className="h-5 w-5" /></span>
+          <div><DialogTitle className="text-xl">{fueling ? "Editar abastecimento" : "Novo abastecimento"}</DialogTitle><p className="text-sm text-muted-foreground">Registre o abastecimento e classifique cada item.</p></div>
+        </div>
       </DialogHeader>
-      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <div>
           <Label>Data e hora</Label>
           <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -791,7 +794,17 @@ function FuelingDialog({
               {trips.map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.origin} → {trip.destination}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input className="mt-2" value={tripRef} onChange={(e) => setTripRef(e.target.value)} placeholder="Ou digite minuta/CTE para localizar" />
+          <div className="mt-2 flex gap-2">
+            <Input value={tripRef} onChange={(e) => setTripRef(e.target.value)} placeholder="Minuta ou CTe" />
+            <Button type="button" size="icon" variant="outline" aria-label="Pesquisar viagem" title="Pesquisar viagem" onClick={() => {
+              const ref = tripRef.trim().toLowerCase();
+              const matches = ref ? trips.filter((trip) => trip.cte?.toLowerCase() === ref || trip.minuta?.toLowerCase() === ref) : [];
+              if (matches.length === 1) { setTripId(matches[0].id); toast.success("Viagem encontrada"); }
+              else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada. Escolha no campo acima.");
+              else toast.error("Nenhuma viagem encontrada.");
+            }}><Search className="h-4 w-4" /></Button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Digite uma minuta ou CTe e pesquise para vincular.</p>
         </div>
         <div>
           <Label>Hodômetro (km)</Label>
@@ -896,8 +909,14 @@ function FuelingDialog({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
-              <div className="col-span-12 flex flex-wrap items-center justify-end gap-2">
-                <span className="text-xs text-muted-foreground">
+              <div className="col-span-12 rounded-lg bg-muted/40 p-3">
+                <Label className="text-xs">Responsabilidade deste item</Label>
+                <RadioGroup value={it.responsibility ?? responsibility} onValueChange={(v) => updateItem(idx, { responsibility: v as ExpenseResponsibility })} className="mt-2 flex flex-wrap gap-3">
+                  <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="minha" /> Minha despesa</label>
+                  <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="desconto" /> Frigorífico desconta</label>
+                  <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="ressarcir" /> Frigorífico ressarce</label>
+                </RadioGroup>
+                <span className="mt-2 block text-xs text-muted-foreground">
                   Subtotal:{" "}
                   {formatBRL(
                     Number(it.quantity || 0) * Number(it.unitPrice || 0) - Number(it.discount || 0),
