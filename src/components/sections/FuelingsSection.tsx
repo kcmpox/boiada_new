@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Archive, RotateCcw, Code as Code2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
 import type { Attachment } from "@/lib/storage";
 import { Pagination, PAGE_SIZE } from "@/components/Pagination";
