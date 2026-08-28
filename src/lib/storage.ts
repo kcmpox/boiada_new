@@ -13,6 +13,14 @@ export interface Attachment {
   dataUrl?: string;
 }
 
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Truck {
   id: string;
   plate: string;
@@ -294,6 +302,7 @@ const KEYS = {
   driverEntries: "gt_driver_entries",
   commissionPayments: "gt_commission_payments",
   settings: "gt_settings",
+  notes: "gt_notes",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -362,6 +371,7 @@ export const useDriverEntries = () => useStored<DriverEntry[]>(KEYS.driverEntrie
 export const useCommissionPayments = () =>
   useStored<CommissionPayment[]>(KEYS.commissionPayments, []);
 export const useSettings = () => useStored<AppSettings>(KEYS.settings, DEFAULT_SETTINGS);
+export const useNotes = () => useStored<Note[]>(KEYS.notes, []);
 
 // --- Legacy hooks for backward compat (configuracoes import) ---
 export const usePriceTiers = () => useStored<OldPriceTier[]>(KEYS.legacyTiers, []);
