@@ -651,6 +651,9 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [tollReceivedValues, setTollReceivedValues] = useState<Record<string, string>>({});
   const [fuelingItemIds, setFuelingItemIds] = useState<string[]>([]);
   const [fuelingRef, setFuelingRef] = useState("");
+  const [fuelingCte, setFuelingCte] = useState("");
+  const [fuelingDuplicateWarning, setFuelingDuplicateWarning] = useState("");
+  const [fuelingRefs, setFuelingRefs] = useState<Record<string, { minuta: string; cte: string }>>({});
   const [receivedValue, setReceivedValue] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -673,7 +676,10 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const expRess = selExp
     .filter((e) => e.responsibility === "ressarcir")
     .reduce((s, e) => s + e.value, 0);
-  const tollAmount = (t: Toll) => Math.min(t.value, Math.max(0, Number(tollReceivedValues[t.id]) || t.value));
+  const tollAmount = (t: Toll) => {
+    const raw = tollReceivedValues[t.id];
+    return Math.min(t.value, Math.max(0, raw === undefined || raw === "" ? t.value : Number(raw) || 0));
+  };
   const tollDesc = selTolls.filter((t) => t.responsibility === "desconto").reduce((s, t) => s + tollAmount(t), 0);
   const tollRess = selTolls.filter((t) => t.responsibility === "ressarcir").reduce((s, t) => s + tollAmount(t), 0);
   const reimbursedValue = fuelRess + expRess + tollRess;
@@ -682,8 +688,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
 
   // Sum of per-trip received values
   const perTripTotal = useMemo(
-    () => Object.values(tripReceivedValues).reduce((s, v) => s + (Number(v) || 0), 0),
-    [tripReceivedValues],
+    () => selTrips.reduce((s, t) => s + (tripReceivedValues[t.id] === undefined || tripReceivedValues[t.id] === "" ? t.finalValue : Number(tripReceivedValues[t.id]) || 0), 0),
+    [selTrips, tripReceivedValues],
   );
 
   const toggle = (id: string, arr: string[], setArr: (v: string[]) => void) => {
@@ -734,6 +740,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       const v = tripReceivedValues[t.id];
       if (v !== undefined && v !== "") {
         tripRecv[t.id] = Number(v) || 0;
+      } else {
+        tripRecv[t.id] = t.finalValue;
       }
     }
     const p: Payment = {
@@ -778,6 +786,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       const v = tripReceivedValues[t.id];
       if (v !== undefined && v !== "") {
         tripRecv[t.id] = Number(v) || 0;
+      } else {
+        tripRecv[t.id] = t.finalValue;
       }
     }
     const registry = {
@@ -1067,7 +1077,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
         <SelectableList
           title="Combustíveis em aberto (Desconta ou Ressarce)"
           empty="Nenhum registro em aberto."
-          extra={<div className="flex flex-wrap gap-2"><Input className="h-8 w-36" placeholder="Minuta" value={fuelingRef} onChange={(e) => { const value = e.target.value; setFuelingRef(value); const trip = trips.find((t) => t.minuta?.toLowerCase() === value.trim().toLowerCase()); if (trip) setTripIds((prev) => prev.includes(trip.id) ? prev : [...prev, trip.id]); }} /><Input className="h-8 w-36" placeholder="CTe" onChange={(e) => { const trip = trips.find((t) => t.cte?.toLowerCase() === e.target.value.trim().toLowerCase()); if (trip) setTripIds((prev) => prev.includes(trip.id) ? prev : [...prev, trip.id]); }} /></div>}
+          extra={<div className="flex flex-wrap items-center gap-2"><Input className="h-8 w-36" placeholder="Minuta" value={fuelingRef} onChange={(e) => { const value = e.target.value.trim().toLowerCase(); setFuelingRef(e.target.value); const matches = trips.filter((t) => t.minuta?.toLowerCase() === value); setFuelingDuplicateWarning(matches.length > 1 ? `Minuta encontrada em ${matches.length} viagens; escolha abaixo.` : ""); if (matches.length === 1) setTripIds((prev) => prev.includes(matches[0].id) ? prev : [...prev, matches[0].id]); }} /><Input className="h-8 w-36" placeholder="CTe" value={fuelingCte} onChange={(e) => { const value = e.target.value.trim().toLowerCase(); setFuelingCte(e.target.value); const matches = trips.filter((t) => t.cte?.toLowerCase() === value); setFuelingDuplicateWarning(matches.length > 1 ? `CTe encontrada em ${matches.length} viagens; escolha abaixo.` : ""); if (matches.length === 1) setTripIds((prev) => prev.includes(matches[0].id) ? prev : [...prev, matches[0].id]); }} />{fuelingDuplicateWarning && <span className="text-xs text-destructive">{fuelingDuplicateWarning}</span>}</div>}
           count={selFuel.length}
           totalLabel="Líquido"
           total={fuelRess - fuelDesc}
@@ -1086,9 +1096,11 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
             const amount = Math.max(0, item.quantity * item.unitPrice - (item.discount || 0));
             const selected = fuelingItemIds.includes(itemId);
             return <Row key={itemId} checked={selected} onCheckedChange={() => {
-              setFuelingItemIds((prev) => prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]);
-              setFuelIds((prev) => selected ? prev : prev.includes(f.id) ? prev : [...prev, f.id]);
-            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={`${item.description} • ${responsibility === "ressarcir" ? "Ressarcir" : "Descontar"}`} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+              const itemIds = f.items.map((_, itemIndex) => `${f.id}:${itemIndex}`);
+              const shouldSelect = !itemIds.every((id) => fuelingItemIds.includes(id));
+              setFuelingItemIds((prev) => shouldSelect ? Array.from(new Set([...prev, ...itemIds])) : prev.filter((id) => !itemIds.includes(id)));
+              setFuelIds((prev) => shouldSelect ? Array.from(new Set([...prev, f.id])) : prev.filter((id) => id !== f.id));
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-1"><span>{item.description}</span><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => { const value = e.target.value; setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: value, cte: prev[f.id]?.cte ?? "" } })); const matches = trips.filter((t) => t.minuta?.toLowerCase() === value.trim().toLowerCase()); if (matches.length > 1) setFuelingDuplicateWarning(`Minuta duplicada em ${matches.length} viagens.`); }} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => { const value = e.target.value; setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: value } })); const matches = trips.filter((t) => t.cte?.toLowerCase() === value.trim().toLowerCase()); if (matches.length > 1) setFuelingDuplicateWarning(`CTe duplicada em ${matches.length} viagens.`); }} /></div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
           }))}
         </SelectableList>
 

@@ -363,23 +363,16 @@ function FuelingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Status</Label>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos</SelectItem>
-                <SelectItem value="aberto">Em aberto</SelectItem>
-<SelectItem value="pago">Recebidos</SelectItem>
-  <SelectItem value="arquivado">Arquivados</SelectItem>
-  </SelectContent>
-            </Select>
-          </div>
+          <Button
+            type="button"
+            variant={statusFilter === "arquivado" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter(statusFilter === "arquivado" ? "__all__" : "arquivado")}
+            title="Mostrar abastecimentos arquivados"
+          >
+            <Archive data-icon="inline-start" />
+            {statusFilter === "arquivado" ? "Voltar aos ativos" : "Arquivados"}
+          </Button>
           {(dateFrom ||
             dateTo ||
             driverFilter !== "__all__" ||
@@ -888,31 +881,7 @@ function FuelingDialog({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
-              <div className="col-span-12 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs whitespace-nowrap">Responsável</Label>
-                  <Select
-                    value={it.responsibility ?? "__default__"}
-                    onValueChange={(v) =>
-                      updateItem(idx, {
-                        responsibility:
-                          v === "__default__" ? undefined : (v as ExpenseResponsibility),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-56 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">
-                        Padrão do registro ({FUEL_RESP_LABEL[responsibility]})
-                      </SelectItem>
-                      <SelectItem value="minha">Minha despesa</SelectItem>
-                      <SelectItem value="desconto">Frigorífico desconta</SelectItem>
-                      <SelectItem value="ressarcir">Frigorífico ressarce</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="col-span-12 flex flex-wrap items-center justify-end gap-2">
                 <span className="text-xs text-muted-foreground">
                   Subtotal:{" "}
                   {formatBRL(
