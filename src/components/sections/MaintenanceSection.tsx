@@ -88,7 +88,7 @@ function ExpensesPage() {
   const [dateTo, setDateTo] = useState("");
   const [driverFilter, setDriverFilter] = useState<string>("__all__");
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
-  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago">("__all__");
+  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago" | "arquivado">("__all__");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(
@@ -107,6 +107,8 @@ function ExpensesPage() {
         if (truckFilter !== "__all__" && e.truckId !== truckFilter) return false;
         if (statusFilter === "aberto" && lockedIds.has(e.id)) return false;
         if (statusFilter === "pago" && !lockedIds.has(e.id)) return false;
+        if (statusFilter === "arquivado" && !e.archived) return false;
+        if (statusFilter !== "arquivado" && e.archived) return false;
         return true;
       }),
     [expenses, dateFrom, dateTo, driverFilter, truckFilter, statusFilter, lockedIds],
@@ -358,8 +360,9 @@ function ExpensesPage() {
                   <SelectContent>
                     <SelectItem value="__all__">Todos</SelectItem>
                     <SelectItem value="aberto">Em aberto</SelectItem>
-                    <SelectItem value="pago">Recebidos</SelectItem>
-                  </SelectContent>
+  <SelectItem value="pago">Recebidos</SelectItem>
+  <SelectItem value="arquivado">Arquivadas</SelectItem>
+  </SelectContent>
                 </Select>
               </div>
               {(dateFrom ||
@@ -437,7 +440,7 @@ function ExpensesPage() {
                           </span>
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <TruckIcon className="h-3 w-3" />
-                            {truck?.name ?? "—"} ({truck?.plate ?? "—"})
+                            {truck?.name ?? "��"} ({truck?.plate ?? "—"})
                           </span>
                           {driver && (
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">

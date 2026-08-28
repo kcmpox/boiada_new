@@ -122,7 +122,7 @@ export function TollsSection() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [driverFilter, setDriverFilter] = useState<string>("__all__");
-  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago">("__all__");
+  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago" | "arquivado">("__all__");
   const [page, setPage] = useState(1);
   const [view, setView] = useState<TollView>("all");
   const [linkDialogToll, setLinkDialogToll] = useState<Toll | null>(null);
@@ -145,8 +145,10 @@ export function TollsSection() {
         if (driverFilter !== "__all__" && driverFilter !== "__none__" && t.driverId !== driverFilter)
           return false;
         if (statusFilter === "aberto" && lockedIds.has(t.id)) return false;
-        if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
-        if (view === "unlinked") {
+if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
+      if (statusFilter === "arquivado" && !t.archived) return false;
+      if (statusFilter !== "arquivado" && t.archived) return false;
+      if (view === "unlinked") {
           if (t.tripId) return false;
         } else if (isTruckView) {
           if (t.truckId !== view) return false;
@@ -450,8 +452,9 @@ export function TollsSection() {
                   <SelectContent>
                     <SelectItem value="__all__">Todos</SelectItem>
                     <SelectItem value="aberto">Em aberto</SelectItem>
-                    <SelectItem value="pago">Recebidos</SelectItem>
-                  </SelectContent>
+  <SelectItem value="pago">Recebidos</SelectItem>
+  <SelectItem value="arquivado">Arquivados</SelectItem>
+  </SelectContent>
                 </Select>
               </div>
               {(dateFrom || dateTo || driverFilter !== "__all__" || statusFilter !== "__all__") && (

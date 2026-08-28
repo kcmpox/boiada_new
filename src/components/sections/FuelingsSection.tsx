@@ -99,7 +99,7 @@ function FuelingsPage() {
   const [dateTo, setDateTo] = useState("");
   const [driverFilter, setDriverFilter] = useState<string>("__all__");
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
-  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago">("__all__");
+  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago" | "arquivado">("__all__");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
@@ -113,6 +113,8 @@ function FuelingsPage() {
       if (truckFilter !== "__all__" && f.truckId !== truckFilter) return false;
       if (statusFilter === "aberto" && lockedIds.has(f.id)) return false;
       if (statusFilter === "pago" && !lockedIds.has(f.id)) return false;
+      if (statusFilter === "arquivado" && !f.archived) return false;
+      if (statusFilter !== "arquivado" && f.archived) return false;
       return true;
     });
   }, [fuelings, dateFrom, dateTo, driverFilter, truckFilter, statusFilter, lockedIds]);
@@ -372,8 +374,9 @@ function FuelingsPage() {
               <SelectContent>
                 <SelectItem value="__all__">Todos</SelectItem>
                 <SelectItem value="aberto">Em aberto</SelectItem>
-                <SelectItem value="pago">Recebidos</SelectItem>
-              </SelectContent>
+<SelectItem value="pago">Recebidos</SelectItem>
+  <SelectItem value="arquivado">Arquivados</SelectItem>
+  </SelectContent>
             </Select>
           </div>
           {(dateFrom ||

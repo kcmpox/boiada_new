@@ -125,6 +125,7 @@ export interface Fueling {
   generalDiscount?: number;
   nfe?: string;
   attachments?: Attachment[];
+  archived?: boolean;
 }
 
 export type ExpenseResponsibility = "minha" | "desconto" | "ressarcir";
@@ -140,6 +141,7 @@ export interface Expense {
   responsibility: ExpenseResponsibility;
   notes?: string;
   attachments?: Attachment[];
+  archived?: boolean;
 }
 
 export interface Toll {
@@ -155,6 +157,7 @@ export interface Toll {
   responsibility: ExpenseResponsibility;
   notes?: string;
   attachments?: Attachment[];
+  archived?: boolean;
 }
 
 export type CardinalDirection = "N" | "S" | "L" | "O" | "N/S" | "L/O";
