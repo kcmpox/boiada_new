@@ -49,7 +49,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Calendar, FileDown, Banknote, Code as Code2, Download, Upload, FileText, Search } from "lucide-react";
+import { Plus, Trash2, Calendar, FileDown, Banknote, Code as Code2, Download, Upload, FileText, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildPdfDoc,
@@ -557,7 +557,7 @@ function ReceiptsTab() {
 function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [payments, setPayments] = usePayments();
   const [trips, setTrips] = useActiveTrips();
-  const [fuelings] = useFuelings();
+  const [fuelings, setFuelings] = useFuelings();
   const [expenses] = useExpenses();
   const [tolls] = useTolls();
   const [trucks] = useTrucks();
@@ -581,7 +581,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const matchDate = (d: string) => {
     const ymd = d.slice(0, 10);
     if (dateFrom && ymd < dateFrom) return false;
-    if (dateTo && ymd > dateTo) return false;
+    const effectiveDateTo = date || dateTo;
+    if (effectiveDateTo && ymd > effectiveDateTo) return false;
     return true;
   };
   const matchDest = (d?: Destination) => {
@@ -911,9 +912,10 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
               <Label className="text-xs">Até</Label>
               <Input
                 type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="mt-1"
+value={date}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    disabled
+                    className="mt-1"
               />
             </div>
           </div>
@@ -1097,7 +1099,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
               const shouldSelect = !itemIds.every((id) => fuelingItemIds.includes(id));
               setFuelingItemIds((prev) => shouldSelect ? Array.from(new Set([...prev, ...itemIds])) : prev.filter((id) => !itemIds.includes(id)));
               setFuelIds((prev) => shouldSelect ? Array.from(new Set([...prev, f.id])) : prev.filter((id) => id !== f.id));
-            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2"><span>{item.description}</span><div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder={f.tripId ? (trips.find((t) => t.id === f.tripId)?.minuta ?? "Minuta") : "Minuta"} value={fuelingRefs[f.id]?.minuta ?? trips.find((t) => t.id === f.tripId)?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder={f.tripId ? (trips.find((t) => t.id === f.tripId)?.cte ?? "CTe") : "CTe"} value={fuelingRefs[f.id]?.cte ?? trips.find((t) => t.id === f.tripId)?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); if (!query) return toast.error("Informe a minuta ou CTe."); const matches = trips.filter((t) => t.minuta?.toLowerCase() === query || t.cte?.toLowerCase() === query); if (matches.length === 1) { setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); toast.success("Viagem vinculada ao abastecimento."); } else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada. Selecione a viagem no cadastro do abastecimento."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div></div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2"><span>{item.description}</span>{f.tripId ? <div className="flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-xs"><span className="font-medium">Viagem: {trips.find((t) => t.id === f.tripId)?.minuta || trips.find((t) => t.id === f.tripId)?.cte || "vinculada"}</span><Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Editar vínculo" title="Editar vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Pencil className="h-3 w-3" /></Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" aria-label="Excluir vínculo" title="Excluir vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Trash2 className="h-3 w-3" /></Button></div> : <div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); const matches = trips.filter((t) => t.minuta?.trim().toLowerCase() === query || t.cte?.trim().toLowerCase() === query); if (matches.length === 1) setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div>}</div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
           }))}
         </SelectableList>
 
