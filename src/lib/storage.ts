@@ -192,6 +192,8 @@ export interface Payment {
   receivedValue: number;
   /** Per-trip received values (for tracking individual payments). */
   tripReceivedValues?: Record<string, number>;
+  tollReceivedValues?: Record<string, number>;
+  fuelingItemIds?: string[];
   notes?: string;
 }
 

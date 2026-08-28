@@ -568,6 +568,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [destFilter, setDestFilter] = useState<string>("__all__");
   const [editingMinuta, setEditingMinuta] = useState<string | null>(null);
   const [minutaInput, setMinutaInput] = useState("");
+  const [editingCte, setEditingCte] = useState<string | null>(null);
+  const [cteInput, setCteInput] = useState("");
 
   const lockedTrips = useMemo(() => new Set(payments.flatMap((p) => p.tripIds)), [payments]);
   const lockedFuel = useMemo(() => new Set(payments.flatMap((p) => p.fuelingIds)), [payments]);
@@ -646,6 +648,9 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [expIds, setExpIds] = useState<string[]>([]);
   const [tollIds, setTollIds] = useState<string[]>([]);
   const [tripReceivedValues, setTripReceivedValues] = useState<Record<string, string>>({});
+  const [tollReceivedValues, setTollReceivedValues] = useState<Record<string, string>>({});
+  const [fuelingItemIds, setFuelingItemIds] = useState<string[]>([]);
+  const [fuelingRef, setFuelingRef] = useState("");
   const [receivedValue, setReceivedValue] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -668,12 +673,9 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const expRess = selExp
     .filter((e) => e.responsibility === "ressarcir")
     .reduce((s, e) => s + e.value, 0);
-  const tollDesc = selTolls
-    .filter((t) => t.responsibility === "desconto")
-    .reduce((s, t) => s + t.value, 0);
-  const tollRess = selTolls
-    .filter((t) => t.responsibility === "ressarcir")
-    .reduce((s, t) => s + t.value, 0);
+  const tollAmount = (t: Toll) => Math.min(t.value, Math.max(0, Number(tollReceivedValues[t.id]) || t.value));
+  const tollDesc = selTolls.filter((t) => t.responsibility === "desconto").reduce((s, t) => s + tollAmount(t), 0);
+  const tollRess = selTolls.filter((t) => t.responsibility === "ressarcir").reduce((s, t) => s + tollAmount(t), 0);
   const reimbursedValue = fuelRess + expRess + tollRess;
   const deductedValue = fuelDesc + expDesc + tollDesc;
   const expectedValue = grossValue + reimbursedValue - rentValue - deductedValue;
@@ -749,6 +751,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       expectedValue,
       receivedValue: rv,
       tripReceivedValues: Object.keys(tripRecv).length > 0 ? tripRecv : undefined,
+      tollReceivedValues: Object.keys(tollReceivedValues).length > 0 ? Object.fromEntries(Object.entries(tollReceivedValues).map(([id, value]) => [id, Number(value) || 0])) : undefined,
+      fuelingItemIds: fuelingItemIds.length > 0 ? fuelingItemIds : undefined,
       notes: notes.trim() || undefined,
     };
     setPayments((prev) => [...prev, p]);
@@ -961,6 +965,16 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
                     <span>Líquido: {formatBRL(tripNet)}</span>
                     {t.minuta && <span>Minuta: {t.minuta}</span>}
                   </div>
+                  {editingCte === t.id ? (
+                    <div className="mt-1 flex items-center gap-1">
+                      <Input className="h-7 text-xs" placeholder="Número da CTe" value={cteInput} onChange={(e) => setCteInput(e.target.value)} autoFocus />
+                      <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => { setTrips((prev) => prev.map((trip) => trip.id === t.id ? { ...trip, cte: cteInput.trim() || undefined } : trip)); setEditingCte(null); setCteInput(""); }}>OK</Button>
+                    </div>
+                  ) : (
+                    <button type="button" className="mt-0.5 flex items-center gap-1 text-xs text-primary hover:underline" onClick={() => { setEditingCte(t.id); setCteInput(t.cte ?? ""); }}>
+                      <FileText className="h-3 w-3" /> {t.cte ? "Editar CTe" : "Inserir CTe"}
+                    </button>
+                  )}
                   {isEditingMinuta ? (
                     <div className="mt-1 flex items-center gap-1">
                       <Input
@@ -1053,6 +1067,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
         <SelectableList
           title="Combustíveis em aberto (Desconta ou Ressarce)"
           empty="Nenhum registro em aberto."
+          extra={<div className="flex flex-wrap gap-2"><Input className="h-8 w-36" placeholder="Minuta" value={fuelingRef} onChange={(e) => { const value = e.target.value; setFuelingRef(value); const trip = trips.find((t) => t.minuta?.toLowerCase() === value.trim().toLowerCase()); if (trip) setTripIds((prev) => prev.includes(trip.id) ? prev : [...prev, trip.id]); }} /><Input className="h-8 w-36" placeholder="CTe" onChange={(e) => { const trip = trips.find((t) => t.cte?.toLowerCase() === e.target.value.trim().toLowerCase()); if (trip) setTripIds((prev) => prev.includes(trip.id) ? prev : [...prev, trip.id]); }} /></div>}
           count={selFuel.length}
           totalLabel="Líquido"
           total={fuelRess - fuelDesc}
@@ -1065,24 +1080,16 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
             )
           }
         >
-          {openFuel.map((f) => (
-            <Row
-              key={f.id}
-              checked={fuelIds.includes(f.id)}
-              onCheckedChange={() => toggle(f.id, fuelIds, setFuelIds)}
-              left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`}
-              middle="Posto"
-              right={
-                <span
-                  className={
-                    fuelResponsibility(f) === "ressarcir" ? "text-emerald-600" : "text-destructive"
-                  }
-                >
-                  {fuelResponsibility(f) === "ressarcir" ? "+" : "-"} {formatBRL(totalFuel(f))}
-                </span>
-              }
-            />
-          ))}
+          {openFuel.flatMap((f) => f.items.map((item, index) => {
+            const itemId = `${f.id}:${index}`;
+            const responsibility = item.responsibility ?? f.responsibility ?? (f.deductFromPayment ? "desconto" : "ressarcir");
+            const amount = Math.max(0, item.quantity * item.unitPrice - (item.discount || 0));
+            const selected = fuelingItemIds.includes(itemId);
+            return <Row key={itemId} checked={selected} onCheckedChange={() => {
+              setFuelingItemIds((prev) => prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]);
+              setFuelIds((prev) => selected ? prev : prev.includes(f.id) ? prev : [...prev, f.id]);
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={`${item.description} • ${responsibility === "ressarcir" ? "Ressarcir" : "Descontar"}`} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+          }))}
         </SelectableList>
 
         {/* Manutenções */}
@@ -1151,6 +1158,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
                   }
                 >
                   {t.responsibility === "ressarcir" ? "+" : "-"} {formatBRL(t.value)}
+                  {tollIds.includes(t.id) && <Input type="number" min="0" max={t.value} step="0.01" className="ml-2 inline-flex h-7 w-24" placeholder="Recebido" value={tollReceivedValues[t.id] ?? ""} onChange={(e) => setTollReceivedValues((prev) => ({ ...prev, [t.id]: e.target.value }))} />}
                 </span>
               }
             />
@@ -1179,8 +1187,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" size="lg" onClick={downloadRegistry}>
-            <Download className="mr-1 h-4 w-4" /> Baixar Registro
+          <Button type="button" variant="outline" size="icon" onClick={downloadRegistry} title="Baixar registro" aria-label="Baixar registro">
+            <Download className="h-4 w-4" />
           </Button>
           <Button type="submit" size="lg">
             <Banknote className="mr-1 h-4 w-4" /> Salvar recebimento
@@ -1197,6 +1205,7 @@ function SelectableList({
   count,
   totalLabel,
   total,
+  extra,
   allChecked,
   onToggleAll,
   children,
@@ -1206,6 +1215,7 @@ function SelectableList({
   count: number;
   totalLabel: string;
   total: number;
+  extra?: React.ReactNode;
   allChecked: boolean;
   onToggleAll: () => void;
   children: React.ReactNode;
@@ -1216,7 +1226,8 @@ function SelectableList({
     <div className="overflow-hidden rounded-xl border border-border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary/50 px-4 py-2.5">
         <p className="text-sm font-semibold">{title}</p>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-muted-foreground">
+          {extra}
           <span>
             {count} selecionado(s) • {totalLabel}: {formatBRL(total)}
           </span>
