@@ -565,6 +565,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [destFilter, setDestFilter] = useState<string>("__all__");
   const [editingMinuta, setEditingMinuta] = useState<string | null>(null);
   const [minutaInput, setMinutaInput] = useState("");
@@ -643,7 +644,6 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
     [tolls, lockedTolls, truckFilter, dateFrom, dateTo],
   );
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [tripIds, setTripIds] = useState<string[]>([]);
   const [fuelIds, setFuelIds] = useState<string[]>([]);
   const [expIds, setExpIds] = useState<string[]>([]);
