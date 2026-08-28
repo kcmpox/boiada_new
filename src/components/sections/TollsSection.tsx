@@ -445,7 +445,7 @@ if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select
-                  value={statusFilter}
+                  value={statusFilter === "arquivado" ? "__all__" : statusFilter}
                   onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
                 >
                   <SelectTrigger className="w-36">
@@ -455,7 +455,6 @@ if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
                     <SelectItem value="__all__">Todos</SelectItem>
                     <SelectItem value="aberto">Em aberto</SelectItem>
   <SelectItem value="pago">Recebidos</SelectItem>
-  <SelectItem value="arquivado">Arquivados</SelectItem>
   </SelectContent>
                 </Select>
               </div>
@@ -473,6 +472,33 @@ if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
                   <X className="mr-1 h-3 w-3" /> Limpar
                 </Button>
               )}
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === "arquivado" ? "__all__" : "arquivado")}
+                className={cn(
+                  "group flex min-w-[140px] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0",
+                  statusFilter === "arquivado"
+                    ? "border-primary/30 bg-primary/5 shadow-sm"
+                    : "border-transparent hover:border-border hover:bg-muted/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                    statusFilter === "arquivado"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/15",
+                  )}
+                >
+                  <Archive className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="font-medium leading-tight">Arquivados</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    Pedágios arquivados — {statusFilter === "arquivado" ? "voltar" : "visualizar"}
+                  </div>
+                </div>
+              </button>
               <div className="ml-auto text-right">
                 <p className="text-xs text-muted-foreground">{sorted.length} registro(s)</p>
                 <p className="text-lg font-bold text-primary">{formatBRL(totalValue)}</p>

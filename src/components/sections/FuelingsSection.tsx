@@ -363,16 +363,33 @@ function FuelingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button
+          <button
             type="button"
-            variant={statusFilter === "arquivado" ? "default" : "outline"}
-            size="sm"
             onClick={() => setStatusFilter(statusFilter === "arquivado" ? "__all__" : "arquivado")}
-            title="Mostrar abastecimentos arquivados"
+            className={cn(
+              "group flex min-w-[140px] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0",
+              statusFilter === "arquivado"
+                ? "border-primary/30 bg-primary/5 shadow-sm"
+                : "border-transparent hover:border-border hover:bg-muted/50",
+            )}
           >
-            <Archive data-icon="inline-start" />
-            {statusFilter === "arquivado" ? "Voltar aos ativos" : "Arquivados"}
-          </Button>
+            <span
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                statusFilter === "arquivado"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/15",
+              )}
+            >
+              <Archive className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="font-medium leading-tight">Arquivados</div>
+              <div className="truncate text-xs text-muted-foreground">
+                Abastecimentos arquivados — {statusFilter === "arquivado" ? "voltar" : "visualizar"}
+              </div>
+            </div>
+          </button>
           {(dateFrom ||
             dateTo ||
             driverFilter !== "__all__" ||
