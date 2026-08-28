@@ -6,6 +6,7 @@ import {
   useDrivers,
   usePayments,
   useSettings,
+  useActiveTrips,
   uid,
   formatBRL,
   formatDateBR,
@@ -37,7 +38,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Code as Code2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Truck as TruckIcon, FileDown, X, Fuel, User as UserIcon, Lock, Archive, RotateCcw, Code as Code2 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
 import type { Attachment } from "@/lib/storage";
@@ -423,12 +424,17 @@ function FuelingsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {paged.map((f) => {
-            const truck = trucks.find((x) => x.id === f.truckId);
+          {paged.flatMap((source) => {
+            const groups = Array.from(new Set(source.items.map((it) => itemResponsibility(source, it))));
+            return groups.map((responsibility) => ({ ...source, id: `${source.id}::${responsibility}`, items: source.items.filter((it) => itemResponsibility(source, it) === responsibility) }));
+          }).map((f) => {
+            const sourceId = f.id.split("::")[0];
+            const source = fuelings.find((item) => item.id === sourceId) ?? f;
+            const truck = trucks.find((x) => x.id === source.truckId);
             const driver = drivers.find((x) => x.id === f.driverId);
             const total = totalOf(f);
             const liters = litersOf(f);
-            const prev = prevOdometer(f);
+            const prev = prevOdometer(source);
             const kml =
               prev != null && liters > 0 && f.odometer > prev ? (f.odometer - prev) / liters : null;
             const locked = lockedIds.has(f.id);
@@ -532,7 +538,7 @@ function FuelingsPage() {
                       size="icon"
                       disabled={locked}
                       onClick={() => {
-                        setEditing(f);
+                        setEditing(source);
                         setOpen(true);
                       }}
                     >
@@ -544,7 +550,7 @@ function FuelingsPage() {
                         size="icon"
                         title="Editar JSON"
                         onClick={() => {
-                          setJsonEditItem(f);
+                          setJsonEditItem(source);
                           setJsonEditOpen(true);
                         }}
                       >
@@ -555,7 +561,19 @@ function FuelingsPage() {
                       variant="ghost"
                       size="icon"
                       disabled={locked}
-                      onClick={() => remove(f.id)}
+                      title={source.archived ? "Desarquivar" : "Arquivar"}
+                      onClick={() => {
+                        setFuelings((prev) => prev.map((item) => item.id === source.id ? { ...item, archived: !item.archived } : item));
+                        toast.success(source.archived ? "Abastecimento desarquivado" : "Abastecimento arquivado");
+                      }}
+                    >
+                      {source.archived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={locked}
+                      onClick={() => remove(source.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -599,6 +617,7 @@ function FuelingDialog({
   const [, setFuelings] = useFuelings();
   const [trucks] = useTrucks();
   const [drivers] = useDrivers();
+  const [trips] = useActiveTrips();
 
   const availableDrivers = useMemo(
     () => drivers.filter((d) => d.active || d.id === fueling?.driverId),
@@ -610,6 +629,8 @@ function FuelingDialog({
   );
   const [truckId, setTruckId] = useState(fueling?.truckId ?? trucks[0]?.id ?? "");
   const [driverId, setDriverId] = useState(fueling?.driverId ?? availableDrivers[0]?.id ?? "");
+  const [tripId, setTripId] = useState(fueling?.tripId ?? "");
+  const [tripRef, setTripRef] = useState("");
   const [odometer, setOdometer] = useState(fueling ? String(fueling.odometer) : "");
   const [responsibility, setResponsibility] = useState<ExpenseResponsibility>(
     fueling ? fuelResponsibility(fueling) : "desconto",
@@ -680,6 +701,11 @@ function FuelingDialog({
       toast.error("Preencha pelo menos um item com quantidade/valor.");
       return;
     }
+    const normalizedRef = tripRef.trim().toLowerCase();
+    const matches = normalizedRef ? trips.filter((trip) => trip.cte?.toLowerCase() === normalizedRef || trip.minuta?.toLowerCase() === normalizedRef) : [];
+    if (normalizedRef && matches.length > 1) toast.warning("Mais de uma viagem possui essa minuta/CTE. Selecione a viagem correta.");
+    const resolvedTripId = matches.length === 1 ? matches[0].id : tripId;
+    if (matches.length === 1) setTripId(resolvedTripId);
     const finalOdometer = odometer !== "" ? Number(odometer) : (lastOdometer ?? 0);
     const genDisc = Number(generalDiscount) || 0;
     const next: Fueling = {
@@ -687,6 +713,7 @@ function FuelingDialog({
       date: toBrasiliaISO(date),
       truckId,
       driverId: driverId || undefined,
+      tripId: resolvedTripId || undefined,
       odometer: finalOdometer,
       items: cleanItems,
       deductFromPayment: responsibility === "desconto",
@@ -746,6 +773,17 @@ function FuelingDialog({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label>Viagem vinculada</Label>
+          <Select value={tripId || "__none__"} onValueChange={(value) => setTripId(value === "__none__" ? "" : value)}>
+            <SelectTrigger><SelectValue placeholder="Selecione uma viagem" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sem vínculo</SelectItem>
+              {trips.map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.origin} → {trip.destination}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input className="mt-2" value={tripRef} onChange={(e) => setTripRef(e.target.value)} placeholder="Ou digite minuta/CTE para localizar" />
         </div>
         <div>
           <Label>Hodômetro (km)</Label>

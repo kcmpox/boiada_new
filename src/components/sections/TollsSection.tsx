@@ -59,6 +59,8 @@ import {
   MapPin,
   Route,
   ArrowRight,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
@@ -516,9 +518,20 @@ if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
                           className="h-full w-full object-cover"
                           loading="lazy"
                           onError={(e) => {
-                            (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+                            e.currentTarget.style.display = "none";
+                            const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                            if (fallback) fallback.hidden = false;
                           }}
                         />
+                        <a
+                          hidden
+                          href={`https://www.openstreetmap.org/?mlat=${loc.latitude}&mlon=${loc.longitude}#map=14/${loc.latitude}/${loc.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="absolute inset-0 flex items-center justify-center bg-muted text-xs font-medium text-primary"
+                        >
+                          Abrir localização no mapa
+                        </a>
                         <div className="absolute bottom-1.5 left-1.5 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
                           {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
                         </div>
@@ -650,6 +663,18 @@ if (statusFilter === "pago" && !lockedIds.has(t.id)) return false;
                               <Code2 className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={locked}
+                            title={t.archived ? "Desarquivar" : "Arquivar"}
+                            onClick={() => {
+                              setTolls((prev) => prev.map((item) => item.id === t.id ? { ...item, archived: !item.archived } : item));
+                              toast.success(t.archived ? "Pedágio desarquivado" : "Pedágio arquivado");
+                            }}
+                          >
+                            {t.archived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

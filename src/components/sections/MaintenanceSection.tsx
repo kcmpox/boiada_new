@@ -49,6 +49,8 @@ import {
   User as UserIcon,
   Lock,
   Code as Code2,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
@@ -494,6 +496,18 @@ function ExpensesPage() {
                             <Code2 className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={locked}
+                          title={e.archived ? "Desarquivar" : "Arquivar"}
+                          onClick={() => {
+                            setExpenses((prev) => prev.map((item) => item.id === e.id ? { ...item, archived: !item.archived } : item));
+                            toast.success(e.archived ? "Manutenção desarquivada" : "Manutenção arquivada");
+                          }}
+                        >
+                          {e.archived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

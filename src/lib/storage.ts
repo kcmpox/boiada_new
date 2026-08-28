@@ -118,6 +118,7 @@ export interface Fueling {
   date: string;
   truckId: string;
   driverId?: string;
+  tripId?: string;
   odometer: number;
   items: FuelingItem[];
   deductFromPayment: boolean;
