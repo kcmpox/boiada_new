@@ -250,6 +250,10 @@ export interface CommissionPayment {
   valesTotal: number;
   /** Vale amount being deducted in this payment */
   valeDeducted: number;
+  /** Individual vale entries selected for deduction */
+  selectedValeEntryIds?: string[];
+  /** Individual vales explicitly forgiven in this payment */
+  forgivenValeEntryIds?: string[];
   /** Ajuda de custo accumulated in this period */
   ajudaCusto: number;
   /** Remaining vale balance carried forward */
