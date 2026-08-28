@@ -49,7 +49,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Calendar, FileDown, Banknote, Code as Code2, Download, Upload, FileText } from "lucide-react";
+import { Plus, Trash2, Calendar, FileDown, Banknote, Code as Code2, Download, Upload, FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildPdfDoc,
@@ -124,7 +124,7 @@ function totalFuel(f: Fueling) {
 function ReceiptsTab() {
   const [payments, setPayments] = usePayments();
   const [trips] = useActiveTrips();
-  const [fuelings] = useFuelings();
+  const [fuelings, setFuelings] = useFuelings();
   const [expenses] = useExpenses();
   const [tolls] = useTolls();
   const [trucks] = useTrucks();
@@ -650,10 +650,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [tripReceivedValues, setTripReceivedValues] = useState<Record<string, string>>({});
   const [tollReceivedValues, setTollReceivedValues] = useState<Record<string, string>>({});
   const [fuelingItemIds, setFuelingItemIds] = useState<string[]>([]);
-  const [fuelingRef, setFuelingRef] = useState("");
-  const [fuelingCte, setFuelingCte] = useState("");
-  const [fuelingDuplicateWarning, setFuelingDuplicateWarning] = useState("");
   const [fuelingRefs, setFuelingRefs] = useState<Record<string, { minuta: string; cte: string }>>({});
+
   const [receivedValue, setReceivedValue] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -1077,7 +1075,6 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
         <SelectableList
           title="Combustíveis em aberto (Desconta ou Ressarce)"
           empty="Nenhum registro em aberto."
-          extra={<div className="flex flex-wrap items-center gap-2"><Input className="h-8 w-36" placeholder="Minuta" value={fuelingRef} onChange={(e) => { const value = e.target.value.trim().toLowerCase(); setFuelingRef(e.target.value); const matches = trips.filter((t) => t.minuta?.toLowerCase() === value); setFuelingDuplicateWarning(matches.length > 1 ? `Minuta encontrada em ${matches.length} viagens; escolha abaixo.` : ""); if (matches.length === 1) setTripIds((prev) => prev.includes(matches[0].id) ? prev : [...prev, matches[0].id]); }} /><Input className="h-8 w-36" placeholder="CTe" value={fuelingCte} onChange={(e) => { const value = e.target.value.trim().toLowerCase(); setFuelingCte(e.target.value); const matches = trips.filter((t) => t.cte?.toLowerCase() === value); setFuelingDuplicateWarning(matches.length > 1 ? `CTe encontrada em ${matches.length} viagens; escolha abaixo.` : ""); if (matches.length === 1) setTripIds((prev) => prev.includes(matches[0].id) ? prev : [...prev, matches[0].id]); }} />{fuelingDuplicateWarning && <span className="text-xs text-destructive">{fuelingDuplicateWarning}</span>}</div>}
           count={selFuel.length}
           totalLabel="Líquido"
           total={fuelRess - fuelDesc}
@@ -1100,7 +1097,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
               const shouldSelect = !itemIds.every((id) => fuelingItemIds.includes(id));
               setFuelingItemIds((prev) => shouldSelect ? Array.from(new Set([...prev, ...itemIds])) : prev.filter((id) => !itemIds.includes(id)));
               setFuelIds((prev) => shouldSelect ? Array.from(new Set([...prev, f.id])) : prev.filter((id) => id !== f.id));
-            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-1"><span>{item.description}</span><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => { const value = e.target.value; setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: value, cte: prev[f.id]?.cte ?? "" } })); const matches = trips.filter((t) => t.minuta?.toLowerCase() === value.trim().toLowerCase()); if (matches.length > 1) setFuelingDuplicateWarning(`Minuta duplicada em ${matches.length} viagens.`); }} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => { const value = e.target.value; setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: value } })); const matches = trips.filter((t) => t.cte?.toLowerCase() === value.trim().toLowerCase()); if (matches.length > 1) setFuelingDuplicateWarning(`CTe duplicada em ${matches.length} viagens.`); }} /></div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2"><span>{item.description}</span><div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder={f.tripId ? (trips.find((t) => t.id === f.tripId)?.minuta ?? "Minuta") : "Minuta"} value={fuelingRefs[f.id]?.minuta ?? trips.find((t) => t.id === f.tripId)?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder={f.tripId ? (trips.find((t) => t.id === f.tripId)?.cte ?? "CTe") : "CTe"} value={fuelingRefs[f.id]?.cte ?? trips.find((t) => t.id === f.tripId)?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); if (!query) return toast.error("Informe a minuta ou CTe."); const matches = trips.filter((t) => t.minuta?.toLowerCase() === query || t.cte?.toLowerCase() === query); if (matches.length === 1) { setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); toast.success("Viagem vinculada ao abastecimento."); } else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada. Selecione a viagem no cadastro do abastecimento."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div></div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
           }))}
         </SelectableList>
 
