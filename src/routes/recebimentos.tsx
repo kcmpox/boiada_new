@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommissionsSection } from "@/components/sections/CommissionsSection";
 import { AdjustmentsSection } from "@/components/sections/AdjustmentsSection";
@@ -76,7 +77,18 @@ export const Route = createFileRoute("/recebimentos")({
   component: ReceiptsPage,
 });
 
+type ReceiptSectionKey = "historico" | "bataguassu" | "cassilandia";
+
+const RECEIPT_NAV_ITEMS = [
+  { key: "historico" as const, label: "Histórico", desc: "Todos os pagamentos", icon: History },
+  { key: "bataguassu" as const, label: "Bataguassu", desc: "Incongruências do frigorífico", icon: Building2 },
+  { key: "cassilandia" as const, label: "Cassilândia", desc: "Incongruências do frigorífico", icon: Building2 },
+];
+
 function ReceiptsPage() {
+  const [section, setSection] = useState<ReceiptSectionKey>("historico");
+  const active = RECEIPT_NAV_ITEMS.find((item) => item.key === section)!;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -87,40 +99,24 @@ function ReceiptsPage() {
           </p>
         </div>
       </div>
-      <Tabs defaultValue="recebimentos" className="space-y-6">
-        <TabsList className="h-10">
-          <TabsTrigger value="recebimentos" className="px-4">
-            <History className="mr-1.5 h-4 w-4" /> Histórico
-          </TabsTrigger>
-          <TabsTrigger value="bataguassu" className="px-4">
-            <Building2 className="mr-1.5 h-4 w-4" /> Bataguassu
-          </TabsTrigger>
-          <TabsTrigger value="cassilandia" className="px-4">
-            <Building2 className="mr-1.5 h-4 w-4" /> Cassilândia
-          </TabsTrigger>
-          <TabsTrigger value="ajustes" className="px-4">
-            <ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes
-          </TabsTrigger>
-          <TabsTrigger value="comissoes" className="px-4">
-            <UsersIcon className="mr-1.5 h-4 w-4" /> Comissões
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="recebimentos" className="space-y-6">
-          <ReceiptsTab />
-        </TabsContent>
-        <TabsContent value="bataguassu" className="space-y-6">
-          <ConstructionNotice title="Bataguassu" />
-        </TabsContent>
-        <TabsContent value="cassilandia" className="space-y-6">
-          <ConstructionNotice title="Cassilândia" />
-        </TabsContent>
-        <TabsContent value="ajustes" className="space-y-6">
-          <AdjustmentsSection />
-        </TabsContent>
-        <TabsContent value="comissoes" className="space-y-6">
-          <CommissionsSection />
-        </TabsContent>
-      </Tabs>
+      <div className="grid gap-6 md:grid-cols-[260px_1fr]">
+        <nav className="md:sticky md:top-6 md:self-start">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+            {RECEIPT_NAV_ITEMS.map((item) => { const Icon = item.icon; const isActive = section === item.key; return (
+              <button key={item.key} onClick={() => setSection(item.key)} className={cn("group flex min-w-[140px] flex-1 items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0 md:flex-none", isActive ? "border-primary/30 bg-primary/5 shadow-sm" : "border-transparent hover:border-border hover:bg-muted/50")}>
+                <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
+                <span className="min-w-0"><span className={cn("block truncate text-sm font-semibold", isActive ? "text-foreground" : "text-muted-foreground")}>{item.label}</span><span className="hidden truncate text-xs text-muted-foreground md:block">{item.desc}</span></span>
+              </button>
+            ); })}
+          </div>
+        </nav>
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center gap-2 md:hidden"><span className="text-sm font-medium text-muted-foreground">{active.desc}</span></div>
+          {section === "historico" && <Tabs defaultValue="recebimentos" className="space-y-6"><TabsList className="h-10"><TabsTrigger value="recebimentos" className="px-4"><BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos</TabsTrigger><TabsTrigger value="ajustes" className="px-4"><ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes</TabsTrigger><TabsTrigger value="comissoes" className="px-4"><UsersIcon className="mr-1.5 h-4 w-4" /> Comissões</TabsTrigger></TabsList><TabsContent value="recebimentos" className="space-y-6"><ReceiptsTab /></TabsContent><TabsContent value="ajustes" className="space-y-6"><AdjustmentsSection /></TabsContent><TabsContent value="comissoes" className="space-y-6"><CommissionsSection /></TabsContent></Tabs>}
+          {section === "bataguassu" && <ConstructionNotice title="Bataguassu" />}
+          {section === "cassilandia" && <ConstructionNotice title="Cassilândia" />}
+        </div>
+      </div>
     </div>
   );
 }
