@@ -197,6 +197,19 @@ export interface Payment {
   notes?: string;
 }
 
+export interface OtherDeductionReimbursement {
+  id: string;
+  date: string;
+  truckId?: string;
+  destination: Destination;
+  tripId?: string;
+  fuelingId?: string;
+  type: "acrescimo" | "abatimento";
+  amount: number;
+  description: string;
+  createdAt: string;
+}
+
 export interface PaymentAdjustment {
   id: string;
   paymentId: string;
@@ -308,6 +321,7 @@ const KEYS = {
   tollLocations: "gt_toll_locations",
   payments: "gt_payments",
   adjustments: "gt_payment_adjustments",
+  otherDeductionReimbursements: "gt_other_deduction_reimbursements",
   bonuses: "gt_pricing_bonuses",
   driverEntries: "gt_driver_entries",
   commissionPayments: "gt_commission_payments",
@@ -376,6 +390,7 @@ export const useTolls = () => useStored<Toll[]>(KEYS.tolls, []);
 export const useTollLocations = () => useStored<TollLocation[]>(KEYS.tollLocations, []);
 export const usePayments = () => useStored<Payment[]>(KEYS.payments, []);
 export const useAdjustments = () => useStored<PaymentAdjustment[]>(KEYS.adjustments, []);
+export const useOtherDeductionReimbursements = () => useStored<OtherDeductionReimbursement[]>(KEYS.otherDeductionReimbursements, []);
 export const useBonuses = () => useStored<PricingBonus[]>(KEYS.bonuses, []);
 export const useDriverEntries = () => useStored<DriverEntry[]>(KEYS.driverEntries, []);
 export const useCommissionPayments = () =>

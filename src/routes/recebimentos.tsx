@@ -14,6 +14,7 @@ import {
   useTrucks,
   useDrivers,
   useSettings,
+  useOtherDeductionReimbursements,
   uid,
   formatBRL,
   formatDateBR,
@@ -25,6 +26,7 @@ import {
   type Expense,
   type Toll,
   type Destination,
+  type OtherDeductionReimbursement,
 } from "@/lib/storage";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,12 +79,13 @@ export const Route = createFileRoute("/recebimentos")({
   component: ReceiptsPage,
 });
 
-type ReceiptSectionKey = "historico" | "bataguassu" | "cassilandia";
+type ReceiptSectionKey = "historico" | "bataguassu" | "cassilandia" | "outros";
 
 const RECEIPT_NAV_ITEMS = [
   { key: "historico" as const, label: "Histórico", desc: "Todos os pagamentos", icon: History },
   { key: "bataguassu" as const, label: "Bataguassu", desc: "Incongruências do frigorífico", icon: Building2 },
   { key: "cassilandia" as const, label: "Cassilândia", desc: "Incongruências do frigorífico", icon: Building2 },
+  { key: "outros" as const, label: "Outros Descontos & Reembolsos", desc: "Acréscimos e abatimentos", icon: ScaleIcon },
 ];
 
 function ReceiptsPage() {
@@ -115,10 +118,24 @@ function ReceiptsPage() {
           {section === "historico" && <Tabs defaultValue="recebimentos" className="space-y-6"><TabsList className="h-10"><TabsTrigger value="recebimentos" className="px-4"><BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos</TabsTrigger><TabsTrigger value="ajustes" className="px-4"><ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes</TabsTrigger><TabsTrigger value="comissoes" className="px-4"><UsersIcon className="mr-1.5 h-4 w-4" /> Comissões</TabsTrigger></TabsList><TabsContent value="recebimentos" className="space-y-6"><ReceiptsTab /></TabsContent><TabsContent value="ajustes" className="space-y-6"><AdjustmentsSection /></TabsContent><TabsContent value="comissoes" className="space-y-6"><CommissionsSection /></TabsContent></Tabs>}
           {section === "bataguassu" && <ConstructionNotice title="Bataguassu" />}
           {section === "cassilandia" && <ConstructionNotice title="Cassilândia" />}
+          {section === "outros" && <OtherDeductionsSection />}
         </div>
       </div>
     </div>
   );
+}
+
+function OtherDeductionsSection() {
+  const [records, setRecords] = useOtherDeductionReimbursements();
+  const [trucks] = useTrucks();
+  const [trips] = useActiveTrips();
+  const [fuelings] = useFuelings();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), truckId: "", destination: "bataguassu" as Destination, tripId: "", fuelingId: "", type: "acrescimo" as OtherDeductionReimbursement["type"], amount: "", description: "" });
+  const reset = () => setForm({ date: new Date().toISOString().slice(0, 10), truckId: "", destination: "bataguassu", tripId: "", fuelingId: "", type: "acrescimo", amount: "", description: "" });
+  const save = (event: React.FormEvent) => { event.preventDefault(); const amount = Number(form.amount); if (!form.description.trim() || !Number.isFinite(amount) || amount <= 0) return toast.error("Informe um valor positivo e uma descrição."); setRecords((prev) => [{ id: uid(), date: form.date, truckId: form.truckId || undefined, destination: form.destination, tripId: form.tripId || undefined, fuelingId: form.fuelingId || undefined, type: form.type, amount, description: form.description.trim(), createdAt: new Date().toISOString() }, ...prev]); setOpen(false); reset(); toast.success("Registro salvo."); };
+  const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+  return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Outros Descontos & Reembolsos</h2><p className="text-sm text-muted-foreground">Registre valores acrescentados ou abatidos pelo frigorífico.</p></div><Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Novo registro</Button></DialogTrigger><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>Novo desconto ou reembolso</DialogTitle><DialogDescription>Relacione o valor ao recebimento quando aplicável.</DialogDescription></DialogHeader><form onSubmit={save} className="grid gap-4 sm:grid-cols-2"><div><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => update("date", e.target.value)} /></div><div><Label>Tipo</Label><Select value={form.type} onValueChange={(value) => update("type", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="acrescimo">Acréscimo</SelectItem><SelectItem value="abatimento">Abatimento</SelectItem></SelectContent></Select></div><div><Label>Caminhão</Label><Select value={form.truckId} onValueChange={(value) => update("truckId", value)}><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{trucks.map((truck) => <SelectItem key={truck.id} value={truck.id}>{truck.plate} — {truck.name}</SelectItem>)}</SelectContent></Select></div><div><Label>Destino</Label><Select value={form.destination} onValueChange={(value) => update("destination", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bataguassu">Bataguassu</SelectItem><SelectItem value="cassilandia">Cassilândia</SelectItem></SelectContent></Select></div><div><Label>Viagem vinculada</Label><Select value={form.tripId} onValueChange={(value) => update("tripId", value)}><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{trips.filter((trip) => !form.truckId || trip.truckId === form.truckId).map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.minuta || trip.cte || trip.id.slice(0, 8)}</SelectItem>)}</SelectContent></Select></div><div><Label>Abastecimento vinculado</Label><Select value={form.fuelingId} onValueChange={(value) => update("fuelingId", value)}><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{fuelings.filter((fueling) => !form.truckId || fueling.truckId === form.truckId).map((fueling) => <SelectItem key={fueling.id} value={fueling.id}>{formatDateBR(fueling.date)} — {fueling.id.slice(0, 8)}</SelectItem>)}</SelectContent></Select></div><div><Label>Valor</Label><Input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => update("amount", e.target.value)} required /></div><div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Explique o motivo do acréscimo ou abatimento" required /></div><DialogFooter className="sm:col-span-2"><Button type="submit">Salvar registro</Button></DialogFooter></form></DialogContent></Dialog></div><Card><div className="divide-y divide-border">{records.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">Nenhum desconto ou reembolso registrado.</p> : records.map((record) => <div key={record.id} className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="font-medium">{record.description}</p><p className="text-xs text-muted-foreground">{formatDateBR(record.date)} • {DESTINATION_LABELS[record.destination]}{record.tripId ? " • viagem vinculada" : ""}{record.fuelingId ? " • abastecimento vinculado" : ""}</p></div><Badge variant={record.type === "acrescimo" ? "default" : "destructive"}>{record.type === "acrescimo" ? "+" : "-"} {formatBRL(record.amount)}</Badge></div>)}</div></Card></div>;
 }
 
 function ConstructionNotice({ title }: { title: string }) {
