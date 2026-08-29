@@ -372,6 +372,8 @@ export async function previewPdf(def: DocDefinition, filename: string) {
 
   const blob = doc.output("blob");
   const url = URL.createObjectURL(blob);
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${def.title}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#111}h1{margin-bottom:4px}p{color:#666}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #ccc;padding:6px;text-align:left;font-size:12px}th{background:#f3f3f3}section{margin-top:22px}</style></head><body><h1>${def.title}</h1><p>${def.subtitle}</p>${def.content.map((item) => { if ("table" in item) return `<table>${item.table.body.map((row, index) => `<tr>${row.map((cell) => `<${index === 0 ? "th" : "td"}>${typeof cell === "object" ? cell.text ?? cell.content ?? "" : cell}</${index === 0 ? "th" : "td"}>`).join("")}</tr>`).join("")}</table>`; if ("text" in item) return `<p>${item.text}</p>`; if ("title" in item) return `<h2>${item.title}</h2>`; return ""; }).join("")}</body></html>`;
+  const htmlUrl = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
   const { requestPdfPreview } = await import("@/components/PdfPreviewDialog");
-  requestPdfPreview(url, filename);
+  requestPdfPreview(url, filename, htmlUrl);
 }

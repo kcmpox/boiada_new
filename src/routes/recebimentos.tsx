@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommissionsSection } from "@/components/sections/CommissionsSection";
 import { AdjustmentsSection } from "@/components/sections/AdjustmentsSection";
-import { Banknote as BanknoteIcon, Users as UsersIcon, Scale as ScaleIcon } from "lucide-react";
+import { Banknote as BanknoteIcon, Users as UsersIcon, Scale as ScaleIcon, History, Building2 } from "lucide-react";
 import {
   usePayments,
   useActiveTrips,
@@ -13,6 +14,7 @@ import {
   useTrucks,
   useDrivers,
   useSettings,
+  useOtherDeductionReimbursements,
   uid,
   formatBRL,
   formatDateBR,
@@ -24,6 +26,7 @@ import {
   type Expense,
   type Toll,
   type Destination,
+  type OtherDeductionReimbursement,
 } from "@/lib/storage";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,7 +79,20 @@ export const Route = createFileRoute("/recebimentos")({
   component: ReceiptsPage,
 });
 
+type ReceiptSectionKey = "historico" | "bataguassu" | "cassilandia" | "outrosDescontos" | "outrosReembolsos";
+
+const RECEIPT_NAV_ITEMS = [
+  { key: "historico" as const, label: "Histórico", desc: "Todos os pagamentos", icon: History },
+  { key: "bataguassu" as const, label: "Bataguassu", desc: "Incongruências do frigorífico", icon: Building2 },
+  { key: "cassilandia" as const, label: "Cassilândia", desc: "Incongruências do frigorífico", icon: Building2 },
+  { key: "outrosDescontos" as const, label: "Outros Descontos", desc: "Abatimentos adicionais", icon: ScaleIcon },
+  { key: "outrosReembolsos" as const, label: "Outros Reembolsos", desc: "Reembolsos adicionais", icon: ScaleIcon },
+];
+
 function ReceiptsPage() {
+  const [section, setSection] = useState<ReceiptSectionKey>("historico");
+  const active = RECEIPT_NAV_ITEMS.find((item) => item.key === section)!;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -87,29 +103,59 @@ function ReceiptsPage() {
           </p>
         </div>
       </div>
-      <Tabs defaultValue="recebimentos" className="space-y-6">
-        <TabsList className="h-10">
-          <TabsTrigger value="recebimentos" className="px-4">
-            <BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos
-          </TabsTrigger>
-          <TabsTrigger value="ajustes" className="px-4">
-            <ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes
-          </TabsTrigger>
-          <TabsTrigger value="comissoes" className="px-4">
-            <UsersIcon className="mr-1.5 h-4 w-4" /> Comissões
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="recebimentos" className="space-y-6">
-          <ReceiptsTab />
-        </TabsContent>
-        <TabsContent value="ajustes" className="space-y-6">
-          <AdjustmentsSection />
-        </TabsContent>
-        <TabsContent value="comissoes" className="space-y-6">
-          <CommissionsSection />
-        </TabsContent>
-      </Tabs>
+  <Tabs defaultValue="recebimentos" className="space-y-6">
+  <TabsList className="h-10"><TabsTrigger value="recebimentos" className="px-4"><BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos</TabsTrigger><TabsTrigger value="ajustes" className="px-4"><ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes</TabsTrigger><TabsTrigger value="comissoes" className="px-4"><UsersIcon className="mr-1.5 h-4 w-4" /> Comissões</TabsTrigger></TabsList>
+  <TabsContent value="recebimentos">
+  <div className="grid gap-6 md:grid-cols-[260px_1fr]">
+  <nav className="md:sticky md:top-6 md:self-start">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+            {RECEIPT_NAV_ITEMS.map((item) => { const Icon = item.icon; const isActive = section === item.key; return (
+              <button key={item.key} onClick={() => setSection(item.key)} className={cn("group flex min-w-[140px] flex-1 items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0 md:flex-none", isActive ? "border-primary/30 bg-primary/5 shadow-sm" : "border-transparent hover:border-border hover:bg-muted/50")}>
+                <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
+                <span className="min-w-0"><span className={cn("block truncate text-sm font-semibold", isActive ? "text-foreground" : "text-muted-foreground")}>{item.label}</span><span className="hidden truncate text-xs text-muted-foreground md:block">{item.desc}</span></span>
+              </button>
+            ); })}
+          </div>
+        </nav>
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center gap-2 md:hidden"><span className="text-sm font-medium text-muted-foreground">{active.desc}</span></div>
+          {section === "historico" && <ReceiptsTab />}
+          {section === "bataguassu" && <ConstructionNotice title="Bataguassu" />}
+          {section === "cassilandia" && <ConstructionNotice title="Cassilândia" />}
+          {section === "outrosDescontos" && <ConstructionNotice title="Outros Descontos" />}
+          {section === "outrosReembolsos" && <ConstructionNotice title="Outros Reembolsos" />}
+        </div>
+      </div>
+  </TabsContent>
+  <TabsContent value="ajustes" className="space-y-6"><AdjustmentsSection /></TabsContent>
+  <TabsContent value="comissoes" className="space-y-6"><CommissionsSection /></TabsContent>
+  </Tabs>
     </div>
+  );
+}
+
+function OtherDeductionsSection() {
+  const [records, setRecords] = useOtherDeductionReimbursements();
+  const [trucks] = useTrucks();
+  const [trips] = useActiveTrips();
+  const [fuelings] = useFuelings();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), truckId: "", destination: "bataguassu" as Destination, tripId: "", fuelingId: "", type: "acrescimo" as OtherDeductionReimbursement["type"], amount: "", description: "" });
+  const reset = () => setForm({ date: new Date().toISOString().slice(0, 10), truckId: "", destination: "bataguassu", tripId: "", fuelingId: "", type: "acrescimo", amount: "", description: "" });
+  const save = (event: React.FormEvent) => { event.preventDefault(); const amount = Number(form.amount); if (!form.description.trim() || !Number.isFinite(amount) || amount <= 0) return toast.error("Informe um valor positivo e uma descrição."); setRecords((prev) => [{ id: uid(), date: form.date, truckId: form.truckId || undefined, destination: form.destination, tripId: form.tripId || undefined, fuelingId: form.fuelingId || undefined, type: form.type, amount, description: form.description.trim(), createdAt: new Date().toISOString() }, ...prev]); setOpen(false); reset(); toast.success("Registro salvo."); };
+  const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+  return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Outros Descontos & Reembolsos</h2><p className="text-sm text-muted-foreground">Registre valores acrescentados ou abatidos pelo frigorífico.</p></div><Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Novo registro</Button></DialogTrigger><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>Novo desconto ou reembolso</DialogTitle><DialogDescription>Relacione o valor ao recebimento quando aplicável.</DialogDescription></DialogHeader><form onSubmit={save} className="grid gap-4 sm:grid-cols-2"><div><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => update("date", e.target.value)} /></div><div><Label>Tipo</Label><Select value={form.type} onValueChange={(value) => update("type", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="acrescimo">Acréscimo</SelectItem><SelectItem value="abatimento">Abatimento</SelectItem></SelectContent></Select></div><div><Label>Caminhão</Label><Select value={form.truckId} onValueChange={(value) => update("truckId", value)}><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{trucks.map((truck) => <SelectItem key={truck.id} value={truck.id}>{truck.plate} — {truck.name}</SelectItem>)}</SelectContent></Select></div><div><Label>Destino</Label><Select value={form.destination} onValueChange={(value) => update("destination", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bataguassu">Bataguassu</SelectItem><SelectItem value="cassilandia">Cassilândia</SelectItem></SelectContent></Select></div><div><Label>Viagem vinculada</Label><Select value={form.tripId} onValueChange={(value) => update("tripId", value)}><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{trips.filter((trip) => !form.truckId || trip.truckId === form.truckId).map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.minuta || trip.cte || trip.id.slice(0, 8)}</SelectItem>)}</SelectContent></Select></div><div><Label>Abastecimento vinculado</Label><Select value={form.fuelingId} onValueChange={(value) => update("fuelingId", value)}><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{fuelings.filter((fueling) => !form.truckId || fueling.truckId === form.truckId).map((fueling) => <SelectItem key={fueling.id} value={fueling.id}>{formatDateBR(fueling.date)} — {fueling.id.slice(0, 8)}</SelectItem>)}</SelectContent></Select></div><div><Label>Valor</Label><Input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => update("amount", e.target.value)} required /></div><div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Explique o motivo do acréscimo ou abatimento" required /></div><DialogFooter className="sm:col-span-2"><Button type="submit">Salvar registro</Button></DialogFooter></form></DialogContent></Dialog></div><Card><div className="divide-y divide-border">{records.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">Nenhum desconto ou reembolso registrado.</p> : records.map((record) => <div key={record.id} className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="font-medium">{record.description}</p><p className="text-xs text-muted-foreground">{formatDateBR(record.date)} • {DESTINATION_LABELS[record.destination]}{record.tripId ? " • viagem vinculada" : ""}{record.fuelingId ? " • abastecimento vinculado" : ""}</p></div><Badge variant={record.type === "acrescimo" ? "default" : "destructive"}>{record.type === "acrescimo" ? "+" : "-"} {formatBRL(record.amount)}</Badge></div>)}</div></Card></div>;
+}
+
+function ConstructionNotice({ title }: { title: string }) {
+  return (
+    <Card className="flex min-h-56 flex-col items-center justify-center gap-3 p-8 text-center">
+      <Building2 className="h-10 w-10 text-muted-foreground" />
+      <div>
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <p className="mt-1 text-muted-foreground">Esta página está em construção.</p>
+      </div>
+    </Card>
   );
 }
 
@@ -724,13 +770,17 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       toast.error("Informe a data.");
       return;
     }
+    if (destFilter === "__all__") {
+      toast.error("Selecione um destino para realizar o pagamento.");
+      return;
+    }
     if (selTrips.length === 0) {
       toast.error("Selecione ao menos uma viagem.");
       return;
     }
-    const rv = Number(receivedValue);
-    if (Number.isNaN(rv)) {
-      toast.error("Informe o valor recebido.");
+    const rv = receivedValue.trim() === "" ? expectedValue : Number(receivedValue);
+    if (!Number.isFinite(rv)) {
+      toast.error("Informe um valor recebido válido.");
       return;
     }
     // Build per-trip received values record
@@ -746,6 +796,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
     const p: Payment = {
       id: uid(),
       date,
+      destination: destFilter as Destination,
       tripIds,
       fuelingIds: fuelIds,
       expenseIds: expIds,
@@ -779,7 +830,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       toast.error("Selecione ao menos uma viagem.");
       return;
     }
-    const rv = Number(receivedValue) || 0;
+    const rv = receivedValue.trim() === "" ? expectedValue : Number(receivedValue) || 0;
     const tripRecv: Record<string, number> = {};
     for (const t of selTrips) {
       const v = tripReceivedValues[t.id];
@@ -1099,7 +1150,7 @@ value={date}
               const shouldSelect = !itemIds.every((id) => fuelingItemIds.includes(id));
               setFuelingItemIds((prev) => shouldSelect ? Array.from(new Set([...prev, ...itemIds])) : prev.filter((id) => !itemIds.includes(id)));
               setFuelIds((prev) => shouldSelect ? Array.from(new Set([...prev, f.id])) : prev.filter((id) => id !== f.id));
-            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2"><span>{item.description}</span>{f.tripId ? <div className="flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-xs"><span className="font-medium">Viagem: {trips.find((t) => t.id === f.tripId)?.minuta || trips.find((t) => t.id === f.tripId)?.cte || "vinculada"}</span><Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Editar vínculo" title="Editar vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Pencil className="h-3 w-3" /></Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" aria-label="Excluir vínculo" title="Excluir vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Trash2 className="h-3 w-3" /></Button></div> : <div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); const matches = trips.filter((t) => t.minuta?.trim().toLowerCase() === query || t.cte?.trim().toLowerCase() === query); if (matches.length === 1) setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div>}</div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2">{f.tripId && (() => { const linkedTrip = trips.find((t) => t.id === f.tripId); return linkedTrip ? <div className="w-full text-[0.75rem] text-[#eb881f]">{linkedTrip.origin} → {linkedTrip.destination ? DESTINATION_LABELS[linkedTrip.destination] : "—"}</div> : null; })()}<span>{item.description}</span>{f.tripId ? <div className="flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-xs"><span className="font-medium">Viagem: {trips.find((t) => t.id === f.tripId)?.minuta || trips.find((t) => t.id === f.tripId)?.cte || "vinculada"}</span><Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Editar vínculo" title="Editar vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Pencil className="h-3 w-3" /></Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" aria-label="Excluir vínculo" title="Excluir vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Trash2 className="h-3 w-3" /></Button></div> : <div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); const matches = trips.filter((t) => t.minuta?.trim().toLowerCase() === query || t.cte?.trim().toLowerCase() === query); if (matches.length === 1) setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div>}</div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
           }))}
         </SelectableList>
 

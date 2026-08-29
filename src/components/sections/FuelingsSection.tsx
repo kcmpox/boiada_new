@@ -7,6 +7,7 @@ import {
   usePayments,
   useSettings,
   useActiveTrips,
+  useTrips,
   uid,
   formatBRL,
   formatDateBR,
@@ -46,6 +47,8 @@ import type { Attachment } from "@/lib/storage";
 import { Pagination, PAGE_SIZE } from "@/components/Pagination";
 import { JsonEditorDialog } from "@/components/JsonEditorDialog";
 import { TruckNav, type TruckNavItem } from "@/components/TruckNav";
+import { Switch } from "@/components/ui/switch";
+import { FuelingAlternativeDialog } from "@/components/sections/FuelingAlternativeDialog";
 import {
   buildPdfDoc,
   previewPdf,
@@ -89,6 +92,7 @@ function litersOf(f: Fueling) {
 function FuelingsPage() {
   const [fuelings, setFuelings] = useFuelings();
   const [trucks] = useTrucks();
+  const [allTrips, setTrips] = useTrips();
   const [drivers] = useDrivers();
   const [payments] = usePayments();
   const lockedIds = useMemo(() => new Set(payments.flatMap((p) => p.fuelingIds)), [payments]);
@@ -112,7 +116,9 @@ function FuelingsPage() {
       if (driverFilter === "__none__" && f.driverId) return false;
       if (driverFilter !== "__all__" && driverFilter !== "__none__" && f.driverId !== driverFilter)
         return false;
-      if (truckFilter !== "__all__" && f.truckId !== truckFilter) return false;
+      if (truckFilter === "__archived__" && !f.archived) return false;
+      if (truckFilter === "__without_fueling__") return false;
+      if (truckFilter !== "__all__" && !truckFilter.startsWith("__") && f.truckId !== truckFilter) return false;
       if (statusFilter === "aberto" && lockedIds.has(f.id)) return false;
       if (statusFilter === "pago" && !lockedIds.has(f.id)) return false;
       if (statusFilter === "arquivado" && !f.archived) return false;
@@ -146,6 +152,8 @@ function FuelingsPage() {
         count: fuelings.length,
       },
     ];
+    items.push({ key: "__archived__", label: "Arquivados", desc: "Registros arquivados", icon: Archive, count: fuelings.filter((f) => f.archived).length });
+    items.push({ key: "__without_fueling__", label: "Viagens sem abastecimento", desc: "Viagens sem registro", icon: ClipboardList, count: allTrips.filter((trip) => !trip.archived && !trip.withoutFueling && !fuelings.some((fueling) => fueling.tripId === trip.id)).length });
     for (const tr of trucks) {
       items.push({
         key: tr.id,
@@ -156,7 +164,7 @@ function FuelingsPage() {
       });
     }
     return items;
-  }, [trucks, fuelings]);
+  }, [trucks, fuelings, allTrips]);
 
   // Para km/l: precisamos do hodômetro anterior do mesmo caminhão (anterior em data)
   const prevOdometer = (f: Fueling): number | null => {
@@ -275,6 +283,7 @@ function FuelingsPage() {
         title: "Relatório de Combustíveis",
         subtitle: periodo,
         content,
+        orientation: "landscape",
       });
 
       await previewPdf(
@@ -324,7 +333,7 @@ function FuelingsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-[220px_1fr]">
-        <TruckNav items={navItems} value={truckFilter} onChange={setTruckFilter} />
+        <TruckNav items={navItems} value={truckFilter} onChange={(key) => { setTruckFilter(key); if (key === "__archived__") setStatusFilter("arquivado"); else setStatusFilter("__all__"); }} />
         <div className="space-y-6">
       <Card className="p-4 shadow-soft">
         <div className="flex flex-wrap items-end gap-3">
@@ -364,33 +373,6 @@ function FuelingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <button
-            type="button"
-            onClick={() => setStatusFilter(statusFilter === "arquivado" ? "__all__" : "arquivado")}
-            className={cn(
-              "group flex min-w-[140px] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0",
-              statusFilter === "arquivado"
-                ? "border-primary/30 bg-primary/5 shadow-sm"
-                : "border-transparent hover:border-border hover:bg-muted/50",
-            )}
-          >
-            <span
-              className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
-                statusFilter === "arquivado"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/15",
-              )}
-            >
-              <Archive className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <div className="font-medium leading-tight">Arquivados</div>
-              <div className="truncate text-xs text-muted-foreground">
-                Abastecimentos arquivados — {statusFilter === "arquivado" ? "voltar" : "visualizar"}
-              </div>
-            </div>
-          </button>
           {(dateFrom ||
             dateTo ||
             driverFilter !== "__all__" ||
@@ -429,7 +411,9 @@ function FuelingsPage() {
         </Card>
       )}
 
-      {sorted.length === 0 ? (
+      {truckFilter === "__without_fueling__" ? (
+        <div className="space-y-3">{allTrips.filter((trip) => !trip.archived && !trip.withoutFueling && !fuelings.some((fueling) => fueling.tripId === trip.id)).map((trip) => <Card key={trip.id} className="p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{trip.origin} → {trip.destination}</p><p className="text-sm text-muted-foreground">{formatDateBR(trip.date)} • {trip.minuta || trip.cte || "Sem documento"}</p></div><Button size="sm" onClick={() => { setTrips((prev) => prev.map((item) => item.id === trip.id ? { ...item, withoutFueling: true } : item)); toast.success("Viagem marcada sem abastecimento."); }}>Marcar sem abastecimento</Button></div></Card>)}</div>
+      ) : sorted.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground">
           Nenhum abastecimento registrado.
         </Card>
@@ -626,6 +610,14 @@ function FuelingDialog({
   const [trucks] = useTrucks();
   const [drivers] = useDrivers();
   const [trips] = useActiveTrips();
+  const [allTrips] = useTrips();
+  const [showLinkedTrips, setShowLinkedTrips] = useState(Boolean(fueling?.tripId));
+  const [alternativeLayout, setAlternativeLayout] = useState(false);
+  const selectableTrips = useMemo(() => {
+    if (showLinkedTrips) return allTrips.filter((trip) => !trip.withoutFueling || trip.id === fueling?.tripId);
+    const linkedTripIds = new Set(allFuelings.map((item) => item.tripId).filter(Boolean));
+    return allTrips.filter((trip) => trip.id === fueling?.tripId || (!trip.withoutFueling && !linkedTripIds.has(trip.id)));
+  }, [showLinkedTrips, allTrips, allFuelings, fueling?.tripId]);
 
   const availableDrivers = useMemo(
     () => drivers.filter((d) => d.active || d.id === fueling?.driverId),
@@ -739,8 +731,15 @@ function FuelingDialog({
     onSaved();
   };
 
+  if (alternativeLayout) {
+    return <FuelingAlternativeDialog onBack={() => setAlternativeLayout(false)} />;
+  }
+
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-center">
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">Novo layout <Switch checked={alternativeLayout} onCheckedChange={setAlternativeLayout} aria-label="Ativar novo layout" /></label>
+      </div>
       <DialogHeader className="rounded-xl bg-primary/5 p-5">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Fuel className="h-5 w-5" /></span>
@@ -791,9 +790,10 @@ function FuelingDialog({
             <SelectTrigger><SelectValue placeholder="Selecione uma viagem" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__none__">Sem vínculo</SelectItem>
-              {trips.map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.origin} → {trip.destination}</SelectItem>)}
+              {selectableTrips.map((trip) => <SelectItem key={trip.id} value={trip.id}>{formatDateBR(trip.date)} — {trip.origin} → {trip.destination}{allFuelings.some((item) => item.tripId === trip.id) ? " (já vinculada)" : ""}</SelectItem>)}
             </SelectContent>
           </Select>
+          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Checkbox checked={showLinkedTrips} onCheckedChange={(checked) => setShowLinkedTrips(checked === true)} /> Exibir viagens já vinculadas</label>
           <div className="mt-2 flex gap-2">
             <Input value={tripRef} onChange={(e) => setTripRef(e.target.value)} placeholder="Minuta ou CTe" />
             <Button type="button" size="icon" variant="outline" aria-label="Pesquisar viagem" title="Pesquisar viagem" onClick={() => {

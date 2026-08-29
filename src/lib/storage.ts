@@ -101,6 +101,8 @@ export interface Trip {
   skipTracking?: boolean;
   /** When true, the trip is archived: hidden from recebimentos, relatórios e demais telas. */
   archived?: boolean;
+  /** When true, this trip intentionally has no fueling record. */
+  withoutFueling?: boolean;
 }
 
 export interface FuelingItem {
@@ -179,6 +181,7 @@ export const RENT_PERCENT = 0.1;
 export interface Payment {
   id: string;
   date: string;
+  destination: Destination;
   tripIds: string[];
   fuelingIds: string[];
   expenseIds: string[];
@@ -195,6 +198,19 @@ export interface Payment {
   tollReceivedValues?: Record<string, number>;
   fuelingItemIds?: string[];
   notes?: string;
+}
+
+export interface OtherDeductionReimbursement {
+  id: string;
+  date: string;
+  truckId?: string;
+  destination: Destination;
+  tripId?: string;
+  fuelingId?: string;
+  type: "acrescimo" | "abatimento";
+  amount: number;
+  description: string;
+  createdAt: string;
 }
 
 export interface PaymentAdjustment {
@@ -308,6 +324,7 @@ const KEYS = {
   tollLocations: "gt_toll_locations",
   payments: "gt_payments",
   adjustments: "gt_payment_adjustments",
+  otherDeductionReimbursements: "gt_other_deduction_reimbursements",
   bonuses: "gt_pricing_bonuses",
   driverEntries: "gt_driver_entries",
   commissionPayments: "gt_commission_payments",
@@ -376,6 +393,7 @@ export const useTolls = () => useStored<Toll[]>(KEYS.tolls, []);
 export const useTollLocations = () => useStored<TollLocation[]>(KEYS.tollLocations, []);
 export const usePayments = () => useStored<Payment[]>(KEYS.payments, []);
 export const useAdjustments = () => useStored<PaymentAdjustment[]>(KEYS.adjustments, []);
+export const useOtherDeductionReimbursements = () => useStored<OtherDeductionReimbursement[]>(KEYS.otherDeductionReimbursements, []);
 export const useBonuses = () => useStored<PricingBonus[]>(KEYS.bonuses, []);
 export const useDriverEntries = () => useStored<DriverEntry[]>(KEYS.driverEntries, []);
 export const useCommissionPayments = () =>
