@@ -103,8 +103,11 @@ function ReceiptsPage() {
           </p>
         </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-[260px_1fr]">
-        <nav className="md:sticky md:top-6 md:self-start">
+  <Tabs defaultValue="recebimentos" className="space-y-6">
+  <TabsList className="h-10"><TabsTrigger value="recebimentos" className="px-4"><BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos</TabsTrigger><TabsTrigger value="ajustes" className="px-4"><ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes</TabsTrigger><TabsTrigger value="comissoes" className="px-4"><UsersIcon className="mr-1.5 h-4 w-4" /> Comissões</TabsTrigger></TabsList>
+  <TabsContent value="recebimentos">
+  <div className="grid gap-6 md:grid-cols-[260px_1fr]">
+  <nav className="md:sticky md:top-6 md:self-start">
           <div className="flex gap-1.5 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
             {RECEIPT_NAV_ITEMS.map((item) => { const Icon = item.icon; const isActive = section === item.key; return (
               <button key={item.key} onClick={() => setSection(item.key)} className={cn("group flex min-w-[140px] flex-1 items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all md:min-w-0 md:flex-none", isActive ? "border-primary/30 bg-primary/5 shadow-sm" : "border-transparent hover:border-border hover:bg-muted/50")}>
@@ -116,13 +119,17 @@ function ReceiptsPage() {
         </nav>
         <div className="min-w-0">
           <div className="mb-4 flex items-center gap-2 md:hidden"><span className="text-sm font-medium text-muted-foreground">{active.desc}</span></div>
-          {section === "historico" && <Tabs defaultValue="recebimentos" className="space-y-6"><TabsList className="h-10"><TabsTrigger value="recebimentos" className="px-4"><BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos</TabsTrigger><TabsTrigger value="ajustes" className="px-4"><ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes</TabsTrigger><TabsTrigger value="comissoes" className="px-4"><UsersIcon className="mr-1.5 h-4 w-4" /> Comissões</TabsTrigger></TabsList><TabsContent value="recebimentos" className="space-y-6"><ReceiptsTab /></TabsContent><TabsContent value="ajustes" className="space-y-6"><AdjustmentsSection /></TabsContent><TabsContent value="comissoes" className="space-y-6"><CommissionsSection /></TabsContent></Tabs>}
+          {section === "historico" && <ReceiptsTab />}
           {section === "bataguassu" && <ConstructionNotice title="Bataguassu" />}
           {section === "cassilandia" && <ConstructionNotice title="Cassilândia" />}
           {section === "outrosDescontos" && <ConstructionNotice title="Outros Descontos" />}
           {section === "outrosReembolsos" && <ConstructionNotice title="Outros Reembolsos" />}
         </div>
       </div>
+  </TabsContent>
+  <TabsContent value="ajustes" className="space-y-6"><AdjustmentsSection /></TabsContent>
+  <TabsContent value="comissoes" className="space-y-6"><CommissionsSection /></TabsContent>
+  </Tabs>
     </div>
   );
 }
