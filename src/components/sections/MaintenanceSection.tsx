@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useExpenses,
   useTrucks,
@@ -53,6 +53,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { AttachmentsField, AttachmentsList } from "@/components/Attachments";
 import { Pagination, PAGE_SIZE } from "@/components/Pagination";
 import { JsonEditorDialog } from "@/components/JsonEditorDialog";
@@ -80,7 +81,7 @@ function ExpensesPage() {
   const [trucks] = useTrucks();
   const [drivers] = useDrivers();
   const [payments] = usePayments();
-  const lockedIds = useMemo(() => new Set(payments.flatMap((p) => p.expenseIds)), [payments]);
+  const lockedIds = useMemo(() => new Set(payments.flatMap((p) => p.expenseIds ?? [])), [payments]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [settings] = useSettings();
@@ -127,7 +128,7 @@ function ExpensesPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useMemo(() => {
+  useEffect(() => {
     setPage(1);
   }, [dateFrom, dateTo, driverFilter, truckFilter, statusFilter]);
 
