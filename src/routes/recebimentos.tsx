@@ -3,7 +3,7 @@ import { useMemo, useState, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommissionsSection } from "@/components/sections/CommissionsSection";
 import { AdjustmentsSection } from "@/components/sections/AdjustmentsSection";
-import { Banknote as BanknoteIcon, Users as UsersIcon, Scale as ScaleIcon } from "lucide-react";
+import { Banknote as BanknoteIcon, Users as UsersIcon, Scale as ScaleIcon, History, Building2 } from "lucide-react";
 import {
   usePayments,
   useActiveTrips,
@@ -90,7 +90,13 @@ function ReceiptsPage() {
       <Tabs defaultValue="recebimentos" className="space-y-6">
         <TabsList className="h-10">
           <TabsTrigger value="recebimentos" className="px-4">
-            <BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos
+            <History className="mr-1.5 h-4 w-4" /> Histórico
+          </TabsTrigger>
+          <TabsTrigger value="bataguassu" className="px-4">
+            <Building2 className="mr-1.5 h-4 w-4" /> Bataguassu
+          </TabsTrigger>
+          <TabsTrigger value="cassilandia" className="px-4">
+            <Building2 className="mr-1.5 h-4 w-4" /> Cassilândia
           </TabsTrigger>
           <TabsTrigger value="ajustes" className="px-4">
             <ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes
@@ -102,6 +108,12 @@ function ReceiptsPage() {
         <TabsContent value="recebimentos" className="space-y-6">
           <ReceiptsTab />
         </TabsContent>
+        <TabsContent value="bataguassu" className="space-y-6">
+          <ConstructionNotice title="Bataguassu" />
+        </TabsContent>
+        <TabsContent value="cassilandia" className="space-y-6">
+          <ConstructionNotice title="Cassilândia" />
+        </TabsContent>
         <TabsContent value="ajustes" className="space-y-6">
           <AdjustmentsSection />
         </TabsContent>
@@ -110,6 +122,18 @@ function ReceiptsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function ConstructionNotice({ title }: { title: string }) {
+  return (
+    <Card className="flex min-h-56 flex-col items-center justify-center gap-3 p-8 text-center">
+      <Building2 className="h-10 w-10 text-muted-foreground" />
+      <div>
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <p className="mt-1 text-muted-foreground">Esta página está em construção.</p>
+      </div>
+    </Card>
   );
 }
 
