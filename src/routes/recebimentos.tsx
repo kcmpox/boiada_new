@@ -79,13 +79,14 @@ export const Route = createFileRoute("/recebimentos")({
   component: ReceiptsPage,
 });
 
-type ReceiptSectionKey = "historico" | "bataguassu" | "cassilandia" | "outros";
+type ReceiptSectionKey = "historico" | "bataguassu" | "cassilandia" | "outrosDescontos" | "outrosReembolsos";
 
 const RECEIPT_NAV_ITEMS = [
   { key: "historico" as const, label: "Histórico", desc: "Todos os pagamentos", icon: History },
   { key: "bataguassu" as const, label: "Bataguassu", desc: "Incongruências do frigorífico", icon: Building2 },
   { key: "cassilandia" as const, label: "Cassilândia", desc: "Incongruências do frigorífico", icon: Building2 },
-  { key: "outros" as const, label: "Outros Descontos & Reembolsos", desc: "Acréscimos e abatimentos", icon: ScaleIcon },
+  { key: "outrosDescontos" as const, label: "Outros Descontos", desc: "Abatimentos adicionais", icon: ScaleIcon },
+  { key: "outrosReembolsos" as const, label: "Outros Reembolsos", desc: "Reembolsos adicionais", icon: ScaleIcon },
 ];
 
 function ReceiptsPage() {
@@ -118,7 +119,8 @@ function ReceiptsPage() {
           {section === "historico" && <Tabs defaultValue="recebimentos" className="space-y-6"><TabsList className="h-10"><TabsTrigger value="recebimentos" className="px-4"><BanknoteIcon className="mr-1.5 h-4 w-4" /> Recebimentos</TabsTrigger><TabsTrigger value="ajustes" className="px-4"><ScaleIcon className="mr-1.5 h-4 w-4" /> Ajustes</TabsTrigger><TabsTrigger value="comissoes" className="px-4"><UsersIcon className="mr-1.5 h-4 w-4" /> Comissões</TabsTrigger></TabsList><TabsContent value="recebimentos" className="space-y-6"><ReceiptsTab /></TabsContent><TabsContent value="ajustes" className="space-y-6"><AdjustmentsSection /></TabsContent><TabsContent value="comissoes" className="space-y-6"><CommissionsSection /></TabsContent></Tabs>}
           {section === "bataguassu" && <ConstructionNotice title="Bataguassu" />}
           {section === "cassilandia" && <ConstructionNotice title="Cassilândia" />}
-          {section === "outros" && <OtherDeductionsSection />}
+          {section === "outrosDescontos" && <ConstructionNotice title="Outros Descontos" />}
+          {section === "outrosReembolsos" && <ConstructionNotice title="Outros Reembolsos" />}
         </div>
       </div>
     </div>
