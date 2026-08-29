@@ -437,7 +437,7 @@ function FuelingsPage() {
       )}
 
       {truckFilter === "__without_fueling__" ? (
-        <div className="space-y-3">{allTrips.filter((trip) => !trip.archived && !trip.withoutFueling ? !fuelings.some((fueling) => fueling.tripId === trip.id) : trip.withoutFueling).map((trip) => <Card key={trip.id} className="p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{trip.origin} → {trip.destination}</p><p className="text-sm text-muted-foreground">{formatDateBR(trip.date)} • {trip.minuta || trip.cte || "Sem documento"}</p></div><Button size="sm" onClick={() => { setTrips((prev) => prev.map((item) => item.id === trip.id ? { ...item, withoutFueling: true } : item)); toast.success("Viagem marcada sem abastecimento."); }}>Marcar sem abastecimento</Button></div></Card>)}</div>
+        <div className="space-y-3">{allTrips.filter((trip) => !trip.archived && !trip.withoutFueling && !fuelings.some((fueling) => fueling.tripId === trip.id)).map((trip) => <Card key={trip.id} className="p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{trip.origin} → {trip.destination}</p><p className="text-sm text-muted-foreground">{formatDateBR(trip.date)} • {trip.minuta || trip.cte || "Sem documento"}</p></div><Button size="sm" onClick={() => { setTrips((prev) => prev.map((item) => item.id === trip.id ? { ...item, withoutFueling: true } : item)); toast.success("Viagem marcada sem abastecimento."); }}>Marcar sem abastecimento</Button></div></Card>)}</div>
       ) : sorted.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground">
           Nenhum abastecimento registrado.
@@ -638,7 +638,7 @@ function FuelingDialog({
   const [allTrips] = useTrips();
   const [showLinkedTrips, setShowLinkedTrips] = useState(Boolean(fueling?.tripId));
   const selectableTrips = useMemo(() => {
-    if (showLinkedTrips) return allTrips;
+    if (showLinkedTrips) return allTrips.filter((trip) => !trip.withoutFueling || trip.id === fueling?.tripId);
     const linkedTripIds = new Set(allFuelings.map((item) => item.tripId).filter(Boolean));
     return allTrips.filter((trip) => trip.id === fueling?.tripId || (!trip.withoutFueling && !linkedTripIds.has(trip.id)));
   }, [showLinkedTrips, allTrips, allFuelings, fueling?.tripId]);
