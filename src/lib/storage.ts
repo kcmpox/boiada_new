@@ -101,6 +101,8 @@ export interface Trip {
   skipTracking?: boolean;
   /** When true, the trip is archived: hidden from recebimentos, relatórios e demais telas. */
   archived?: boolean;
+  /** When true, this trip intentionally has no fueling record. */
+  withoutFueling?: boolean;
 }
 
 export interface FuelingItem {

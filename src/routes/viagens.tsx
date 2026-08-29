@@ -248,7 +248,7 @@ function TripsListSection() {
   const [dateTo, setDateTo] = useState("");
   const [driverFilter, setDriverFilter] = useState<string>("__all__");
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
-  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago">("__all__");
+  const [statusFilter, setStatusFilter] = useState<"__all__" | "aberto" | "pago" | "sem_abastecimento">("__all__");
   const [destFilter, setDestFilter] = useState<"__all__" | Destination>("__all__");
   const [page, setPage] = useState(1);
 
@@ -265,8 +265,9 @@ function TripsListSection() {
       if (truckFilter !== "__all__" && t.truckId !== truckFilter) return false;
       if (destFilter !== "__all__" && t.destination !== destFilter) return false;
       if (statusFilter === "aberto" && lockedTripIds.has(t.id)) return false;
-      if (statusFilter === "pago" && !lockedTripIds.has(t.id)) return false;
-      return true;
+  if (statusFilter === "pago" && !lockedTripIds.has(t.id)) return false;
+  if (statusFilter === "sem_abastecimento" && !t.withoutFueling) return false;
+  return true;
     });
   }, [trips, dateFrom, dateTo, driverFilter, truckFilter, destFilter, statusFilter, lockedTripIds]);
 
@@ -574,6 +575,7 @@ function TripsListSection() {
                 <SelectItem value="__all__">Todas</SelectItem>
                 <SelectItem value="aberto">Em aberto</SelectItem>
                 <SelectItem value="pago">Pagas</SelectItem>
+  <SelectItem value="sem_abastecimento">Sem abastecimento</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -907,6 +909,7 @@ function TripDialog({ trip, onSaved }: { trip: Trip | null; onSaved: () => void 
   const [cattleType, setCattleType] = useState<CattleType>(trip?.cattleType ?? "gordo");
   const [cte, setCte] = useState(trip?.cte ?? "");
   const [minuta, setMinuta] = useState(trip?.minuta ?? "");
+  const [withoutFueling, setWithoutFueling] = useState(trip?.withoutFueling ?? false);
 
   const destTables = tablesByDest.get(destination) ?? [];
   const atualTable = destTables.find((t) => t.name === "ATUAL");
@@ -1055,6 +1058,7 @@ function TripDialog({ trip, onSaved }: { trip: Trip | null; onSaved: () => void 
       tableValue,
       finalValue,
       attachments,
+      withoutFueling,
     };
     setTrips((prev) =>
       trip ? prev.map((p) => (p.id === trip.id ? nextTrip : p)) : [...prev, nextTrip],
@@ -1232,6 +1236,10 @@ function TripDialog({ trip, onSaved }: { trip: Trip | null; onSaved: () => void 
                 placeholder="Número da minuta"
               />
             </div>
+            <label className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+              <Checkbox checked={withoutFueling} onCheckedChange={(checked) => setWithoutFueling(checked === true)} />
+              <span>Viagem sem abastecimento</span>
+            </label>
           </div>
         )}
 
@@ -1555,6 +1563,7 @@ function EditTripDialog({ trip, onSaved }: { trip: Trip; onSaved: () => void }) 
       tableValue,
       finalValue,
       attachments,
+      withoutFueling,
     };
     setTrips((prev) => prev.map((p) => (p.id === trip.id ? updated : p)));
     toast.success("Viagem atualizada");
