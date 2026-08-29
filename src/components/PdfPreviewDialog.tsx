@@ -9,11 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 
-type Req = { url: string; filename: string } | null;
+type Req = { url: string; htmlUrl?: string; filename: string } | null;
 
 let listener: ((r: Req) => void) | null = null;
 
-export function requestPdfPreview(url: string, filename: string) {
+export function requestPdfPreview(url: string, filename: string, htmlUrl?: string) {
   if (!listener) {
     // Fallback: se o host ainda não montou, dispara download direto.
     const a = document.createElement("a");
@@ -22,7 +22,7 @@ export function requestPdfPreview(url: string, filename: string) {
     a.click();
     return;
   }
-  listener({ url, filename });
+  listener({ url, filename, htmlUrl });
 }
 
 export function PdfPreviewHost() {
@@ -59,6 +59,11 @@ export function PdfPreviewHost() {
           <Button variant="outline" onClick={close}>
             Fechar
           </Button>
+          {req?.htmlUrl && (
+            <Button variant="outline" asChild>
+              <a href={req.htmlUrl} target="_blank" rel="noreferrer">view.HTML</a>
+            </Button>
+          )}
           {req && (
             <Button asChild>
               <a href={req.url} download={req.filename}>

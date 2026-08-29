@@ -275,6 +275,7 @@ function FuelingsPage() {
         title: "Relatório de Combustíveis",
         subtitle: periodo,
         content,
+        orientation: "landscape",
       });
 
       await previewPdf(
