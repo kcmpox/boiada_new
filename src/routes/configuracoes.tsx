@@ -139,7 +139,8 @@ type ImportKey =
   | "tolls"
   | "payments"
   | "commissionPayments"
-  | "driverEntries";
+  | "driverEntries"
+  | "notes";
 const IMPORT_LABELS: Record<ImportKey, string> = {
   trucks: "Caminhões",
   drivers: "Motoristas",
@@ -151,6 +152,7 @@ const IMPORT_LABELS: Record<ImportKey, string> = {
   payments: "Recebimentos",
   commissionPayments: "Comissões",
   driverEntries: "Lançamentos",
+  notes: "Anotações",
 };
 
 type WipeKey =
@@ -876,6 +878,7 @@ function BackupSection() {
   const [payments, setPayments] = usePayments();
   const [commissionPayments, setCommissionPayments] = useCommissionPayments();
   const [driverEntries, setDriverEntries] = useDriverEntries();
+  const [notes, setNotes] = useNotes();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "boiada">("json");
   const [importFormat, setImportFormat] = useState<"json" | "boiada">("json");
@@ -892,6 +895,7 @@ function BackupSection() {
     payments: true,
     commissionPayments: true,
     driverEntries: true,
+    notes: true,
   });
   const [importByRecord, setImportByRecord] = useState(false);
   const [importIds, setImportIds] = useState<Record<ImportKey, Set<string>>>({
@@ -905,6 +909,7 @@ function BackupSection() {
     payments: new Set(),
     commissionPayments: new Set(),
     driverEntries: new Set(),
+    notes: new Set(),
   });
 
   const [wipeOpen, setWipeOpen] = useState(false);
@@ -954,6 +959,7 @@ function BackupSection() {
       payments,
       commissionPayments,
       driverEntries,
+      notes,
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -1201,6 +1207,7 @@ function BackupSection() {
         driverEntries: Array.isArray(parsed.driverEntries)
           ? (parsed.driverEntries as unknown[])
           : [],
+        notes: Array.isArray(parsed.notes) ? (parsed.notes as unknown[]) : [],
       };
       const total = Object.values(payload).reduce((s, arr) => s + arr.length, 0);
       if (!total) {
@@ -1219,6 +1226,7 @@ function BackupSection() {
         payments: payload.payments.length > 0,
         commissionPayments: payload.commissionPayments.length > 0,
         driverEntries: payload.driverEntries.length > 0,
+        notes: payload.notes.length > 0,
       });
       setImportByRecord(false);
       setImportIds({
@@ -1232,6 +1240,7 @@ function BackupSection() {
         payments: new Set(),
         commissionPayments: new Set(),
         driverEntries: new Set(),
+        notes: new Set(),
       });
     } catch {
       toast.error("Erro ao ler o arquivo");
@@ -1268,6 +1277,7 @@ function BackupSection() {
         importPayload.commissionPayments as CommissionPayment[],
       );
       const driverEntries_ = pick("driverEntries", importPayload.driverEntries as DriverEntry[]);
+      const notes_ = pick("notes", importPayload.notes as { id: string }[]);
 
       const mergeById = <T extends { id: string }>(prev: T[], next: T[]): T[] => {
         const map = new Map(prev.map((x) => [x.id, x] as const));
@@ -1291,6 +1301,7 @@ function BackupSection() {
         );
       if (has("driverEntries"))
         setDriverEntries((p) => (importByRecord ? mergeById(p, driverEntries_) : driverEntries_));
+      if (has("notes")) setNotes((p) => (importByRecord ? mergeById(p, notes_) : notes_));
       toast.success(`Importado: ${selectedKeys.map((k) => IMPORT_LABELS[k]).join(", ")}`);
       setImportPayload(null);
     } catch (err) {
@@ -1325,9 +1336,10 @@ function BackupSection() {
       trucks: new Set(),
       drivers: new Set(),
       priceTables: new Set(),
-      commissionPayments: new Set(),
-      driverEntries: new Set(),
-    });
+    commissionPayments: new Set(),
+    driverEntries: new Set(),
+    notes: new Set(),
+  });
     setWipeInput("");
     setWipeWord(null);
     setWipeWordSource(null);
