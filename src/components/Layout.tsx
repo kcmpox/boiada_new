@@ -9,7 +9,7 @@ const nav = [
   { to: "/", label: "Painel", icon: LayoutDashboard },
   { to: "/viagens", label: "Viagens", icon: RouteIcon },
   { to: "/despesas", label: "Despesas", icon: Wallet },
-  { to: "/recebimentos", label: "Recebimentos", icon: Banknote },
+  { to: "/recebimentos", label: "Financeiro", icon: Banknote },
   { to: "/cadastros", label: "Cadastros", icon: Users },
   { to: "/configuracoes", label: "Config", icon: Settings },
 ] as const;
@@ -48,7 +48,7 @@ export function Layout() {
                   )}
                 >
                   <item.icon className="h-4 w-4" />
-                  {item.label}
+                  {item.to !== "/configuracoes" && item.label}
                 </Link>
               );
             })}
