@@ -47,6 +47,8 @@ import type { Attachment } from "@/lib/storage";
 import { Pagination, PAGE_SIZE } from "@/components/Pagination";
 import { JsonEditorDialog } from "@/components/JsonEditorDialog";
 import { TruckNav, type TruckNavItem } from "@/components/TruckNav";
+import { Switch } from "@/components/ui/switch";
+import { FuelingAlternativeDialog } from "@/components/sections/FuelingAlternativeDialog";
 import {
   buildPdfDoc,
   previewPdf,
@@ -151,7 +153,7 @@ function FuelingsPage() {
       },
     ];
     items.push({ key: "__archived__", label: "Arquivados", desc: "Registros arquivados", icon: Archive, count: fuelings.filter((f) => f.archived).length });
-    items.push({ key: "__without_fueling__", label: "Viagens sem abastecimento", desc: "Viagens sem registro", icon: ClipboardList, count: 0 });
+    items.push({ key: "__without_fueling__", label: "Viagens sem abastecimento", desc: "Viagens sem registro", icon: ClipboardList, count: allTrips.filter((trip) => !trip.archived && !trip.withoutFueling && !fuelings.some((fueling) => fueling.tripId === trip.id)).length });
     for (const tr of trucks) {
       items.push({
         key: tr.id,
@@ -162,7 +164,7 @@ function FuelingsPage() {
       });
     }
     return items;
-  }, [trucks, fuelings]);
+  }, [trucks, fuelings, allTrips]);
 
   // Para km/l: precisamos do hodômetro anterior do mesmo caminhão (anterior em data)
   const prevOdometer = (f: Fueling): number | null => {
@@ -637,6 +639,7 @@ function FuelingDialog({
   const [trips] = useActiveTrips();
   const [allTrips] = useTrips();
   const [showLinkedTrips, setShowLinkedTrips] = useState(Boolean(fueling?.tripId));
+  const [alternativeLayout, setAlternativeLayout] = useState(false);
   const selectableTrips = useMemo(() => {
     if (showLinkedTrips) return allTrips.filter((trip) => !trip.withoutFueling || trip.id === fueling?.tripId);
     const linkedTripIds = new Set(allFuelings.map((item) => item.tripId).filter(Boolean));
@@ -755,8 +758,15 @@ function FuelingDialog({
     onSaved();
   };
 
+  if (alternativeLayout) {
+    return <FuelingAlternativeDialog onBack={() => setAlternativeLayout(false)} />;
+  }
+
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-center">
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">Novo layout <Switch checked={alternativeLayout} onCheckedChange={setAlternativeLayout} aria-label="Ativar novo layout" /></label>
+      </div>
       <DialogHeader className="rounded-xl bg-primary/5 p-5">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Fuel className="h-5 w-5" /></span>

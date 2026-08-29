@@ -181,6 +181,7 @@ export const RENT_PERCENT = 0.1;
 export interface Payment {
   id: string;
   date: string;
+  destination: Destination;
   tripIds: string[];
   fuelingIds: string[];
   expenseIds: string[];

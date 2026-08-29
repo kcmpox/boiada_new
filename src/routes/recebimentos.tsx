@@ -763,13 +763,17 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       toast.error("Informe a data.");
       return;
     }
+    if (destFilter === "__all__") {
+      toast.error("Selecione um destino para realizar o pagamento.");
+      return;
+    }
     if (selTrips.length === 0) {
       toast.error("Selecione ao menos uma viagem.");
       return;
     }
-    const rv = Number(receivedValue);
-    if (Number.isNaN(rv)) {
-      toast.error("Informe o valor recebido.");
+    const rv = receivedValue.trim() === "" ? expectedValue : Number(receivedValue);
+    if (!Number.isFinite(rv)) {
+      toast.error("Informe um valor recebido válido.");
       return;
     }
     // Build per-trip received values record
@@ -785,6 +789,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
     const p: Payment = {
       id: uid(),
       date,
+      destination: destFilter as Destination,
       tripIds,
       fuelingIds: fuelIds,
       expenseIds: expIds,
@@ -818,7 +823,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
       toast.error("Selecione ao menos uma viagem.");
       return;
     }
-    const rv = Number(receivedValue) || 0;
+    const rv = receivedValue.trim() === "" ? expectedValue : Number(receivedValue) || 0;
     const tripRecv: Record<string, number> = {};
     for (const t of selTrips) {
       const v = tripReceivedValues[t.id];
@@ -1138,7 +1143,7 @@ value={date}
               const shouldSelect = !itemIds.every((id) => fuelingItemIds.includes(id));
               setFuelingItemIds((prev) => shouldSelect ? Array.from(new Set([...prev, ...itemIds])) : prev.filter((id) => !itemIds.includes(id)));
               setFuelIds((prev) => shouldSelect ? Array.from(new Set([...prev, f.id])) : prev.filter((id) => id !== f.id));
-            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2"><span>{item.description}</span>{f.tripId ? <div className="flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-xs"><span className="font-medium">Viagem: {trips.find((t) => t.id === f.tripId)?.minuta || trips.find((t) => t.id === f.tripId)?.cte || "vinculada"}</span><Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Editar vínculo" title="Editar vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Pencil className="h-3 w-3" /></Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" aria-label="Excluir vínculo" title="Excluir vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Trash2 className="h-3 w-3" /></Button></div> : <div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); const matches = trips.filter((t) => t.minuta?.trim().toLowerCase() === query || t.cte?.trim().toLowerCase() === query); if (matches.length === 1) setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div>}</div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
+            }} left={`${formatDateBR(f.date)} • ${truckLabel(f.truckId)}`} middle={<div className="flex min-w-0 flex-wrap items-center gap-2">{f.tripId && (() => { const linkedTrip = trips.find((t) => t.id === f.tripId); return linkedTrip ? <div className="w-full text-[0.75rem] text-[#eb881f]">{linkedTrip.origin} → {linkedTrip.destination ? DESTINATION_LABELS[linkedTrip.destination] : "—"}</div> : null; })()}<span>{item.description}</span>{f.tripId ? <div className="flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-xs"><span className="font-medium">Viagem: {trips.find((t) => t.id === f.tripId)?.minuta || trips.find((t) => t.id === f.tripId)?.cte || "vinculada"}</span><Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Editar vínculo" title="Editar vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Pencil className="h-3 w-3" /></Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" aria-label="Excluir vínculo" title="Excluir vínculo" onClick={() => setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: undefined } : fueling))}><Trash2 className="h-3 w-3" /></Button></div> : <div className="flex items-center gap-1"><Input className="h-7 w-20 text-xs" placeholder="Minuta" value={fuelingRefs[f.id]?.minuta ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: e.target.value, cte: prev[f.id]?.cte ?? "" } }))} /><Input className="h-7 w-20 text-xs" placeholder="CTe" value={fuelingRefs[f.id]?.cte ?? ""} onChange={(e) => setFuelingRefs((prev) => ({ ...prev, [f.id]: { minuta: prev[f.id]?.minuta ?? "", cte: e.target.value } }))} /><Button type="button" size="icon" variant="outline" className="h-7 w-7" aria-label="Pesquisar viagem para abastecimento" title="Pesquisar viagem" onClick={() => { const refs = fuelingRefs[f.id] ?? { minuta: "", cte: "" }; const query = (refs.minuta || refs.cte).trim().toLowerCase(); const matches = trips.filter((t) => t.minuta?.trim().toLowerCase() === query || t.cte?.trim().toLowerCase() === query); if (matches.length === 1) setFuelings((prev) => prev.map((fueling) => fueling.id === f.id ? { ...fueling, tripId: matches[0].id } : fueling)); else if (matches.length > 1) toast.warning("Mais de uma viagem encontrada."); else toast.error("Nenhuma viagem encontrada."); }}><Search className="h-3.5 w-3.5" /></Button></div>}</div>} right={<span className={responsibility === "ressarcir" ? "text-emerald-600" : "text-destructive"}>{responsibility === "ressarcir" ? "+" : "-"} {formatBRL(amount)}</span>} />;
           }))}
         </SelectableList>
 
