@@ -225,39 +225,36 @@ function FuelingsPage() {
         content.push({ ...pdfSectionTitle(label), ...(idx > 0 ? { pageBreak: "before" } : {}) });
 
         const rows: unknown[] = [
-          [th("Data"), th("Motorista"), th("Hodômetro"), th("Litros"), th("Km/L"), th("Total")],
+          [th("ID abastecimento"), th("Data"), th("Hodômetro"), th("Descrição"), th("Quantidade"), th("Preço unitário"), th("Valor com desconto")],
         ];
 
         // ordered por data: hodômetro anterior dentro do grupo
         for (let i = 0; i < ordered.length; i++) {
           const f = ordered[i];
-          const driver = drivers.find((d) => d.id === f.driverId);
-          const liters = litersOf(f);
-          const prev = i > 0 ? ordered[i - 1].odometer : prevOdometer(f);
-          let kml = "-";
-          if (prev != null && liters > 0 && f.odometer > prev) {
-            kml = ((f.odometer - prev) / liters).toFixed(2);
+          for (const item of f.items) {
+            rows.push([
+              f.id,
+              formatDateBR(f.date),
+              f.odometer.toLocaleString("pt-BR"),
+              item.description || "Combustível",
+              item.quantity.toLocaleString("pt-BR"),
+              formatBRL(item.unitPrice),
+              formatBRL(item.quantity * item.unitPrice - (item.discount ?? 0)),
+            ]);
           }
-          rows.push([
-            formatDateBR(f.date),
-            driver?.name ?? "-",
-            f.odometer.toLocaleString("pt-BR"),
-            liters.toLocaleString("pt-BR"),
-            kml,
-            formatBRL(totalOf(f)),
-          ]);
         }
         rows.push([
           {
             text: `Subtotal (${ordered.length})`,
-            colSpan: 3,
+            colSpan: 6,
             alignment: "right",
             bold: true,
             color: PDF_COLORS.primaryDark,
           },
           {},
           {},
-          { text: subLiters.toLocaleString("pt-BR"), bold: true, color: PDF_COLORS.primaryDark },
+          {},
+          {},
           {},
           { text: formatBRL(subtotal), bold: true, color: PDF_COLORS.primaryDark },
         ]);
@@ -265,7 +262,7 @@ function FuelingsPage() {
         content.push({
           table: {
             headerRows: 1,
-            widths: ["auto", "*", "auto", "auto", "auto", "auto"],
+            widths: ["auto", "auto", "auto", "*", "auto", "auto", "auto"],
             body: rows,
           },
           layout: pdfTableLayout,

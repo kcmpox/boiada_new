@@ -34,6 +34,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { AlternativeLayoutDialog } from "@/components/AlternativeLayoutDialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -608,6 +610,7 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [tolls] = useTolls();
   const [trucks] = useTrucks();
   const [settings] = useSettings();
+  const [alternativeLayout, setAlternativeLayout] = useState(false);
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -900,8 +903,11 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
     return t.manualDistance ?? 0;
   };
 
+  if (alternativeLayout) return <AlternativeLayoutDialog open title="Novo recebimento" onBack={() => setAlternativeLayout(false)} />;
+
   return (
     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-center"><label className="flex items-center gap-2 text-xs text-muted-foreground">Novo layout <Switch checked={alternativeLayout} onCheckedChange={setAlternativeLayout} /></label></div>
       <DialogHeader>
         <DialogTitle>Novo recebimento</DialogTitle>
         <DialogDescription>

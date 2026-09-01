@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { AlternativeLayoutDialog } from "@/components/AlternativeLayoutDialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -137,6 +139,7 @@ export function CommissionsSection() {
   const [entryDialogDriverId, setEntryDialogDriverId] = useState<string | null>(null);
   const [jsonEditPayment, setJsonEditPayment] = useState<CommissionPayment | null>(null);
   const [jsonEditOpen, setJsonEditOpen] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>("__all__");
 
   const ajudaCustoMax = settings.ajudaCustoMax;
 
@@ -216,9 +219,10 @@ export function CommissionsSection() {
 
   const filteredCards = useMemo(() => {
     if (!dateFrom && !dateTo) {
-      return cards.filter((c) => c.openPayment || c.trips.length > 0 || c.pastPayments.length > 0);
+      return cards.filter((c) => (selectedDriverId === "__all__" || c.driverId === selectedDriverId) && (c.openPayment || c.trips.length > 0 || c.pastPayments.length > 0));
     }
     return cards.filter((c) => {
+      if (selectedDriverId !== "__all__" && c.driverId !== selectedDriverId) return false;
       const paymentDates = c.pastPayments.map((p) => p.date);
       if (c.openPayment) paymentDates.push(c.openPayment.date);
       return paymentDates.some((d) => {
@@ -227,7 +231,7 @@ export function CommissionsSection() {
         return true;
       });
     });
-  }, [cards, dateFrom, dateTo]);
+  }, [cards, dateFrom, dateTo, selectedDriverId]);
 
   const removePayment = (id: string) => {
     if (!window.confirm("Remover este pagamento de comissão?")) return;
@@ -438,6 +442,15 @@ export function CommissionsSection() {
         </p>
       </div>
 
+      <div className="grid gap-6 md:grid-cols-[240px_1fr]">
+        <Card className="h-fit p-3 md:sticky md:top-6">
+          <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Histórico de lançamentos</p>
+          <div className="flex gap-1 overflow-x-auto md:flex-col">
+            <Button variant={selectedDriverId === "__all__" ? "secondary" : "ghost"} className="justify-start" onClick={() => setSelectedDriverId("__all__")}>Todos os motoristas</Button>
+            {drivers.map((driver) => <Button key={driver.id} variant={selectedDriverId === driver.id ? "secondary" : "ghost"} className="justify-start" onClick={() => setSelectedDriverId(driver.id)}>{driver.name}</Button>)}
+          </div>
+        </Card>
+        <div className="min-w-0">
       <Card className="p-4 shadow-soft">
         <div className="flex flex-wrap items-end gap-3">
           <div>
@@ -503,6 +516,8 @@ export function CommissionsSection() {
           ))}
         </div>
       )}
+        </div>
+      </div>
 
       {payDialogDriverId && (
         <PayCommissionDialog
@@ -858,6 +873,7 @@ function PayCommissionDialog({
   const [customValeDiscount, setCustomValeDiscount] = useState("");
   const [paidAmountInput, setPaidAmountInput] = useState("");
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
+  const [alternativeLayout, setAlternativeLayout] = useState(false);
   const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().slice(0, 10));
 
   // Recompute values based on periodEnd to fix visual bug where trips
@@ -989,9 +1005,12 @@ function PayCommissionDialog({
     onSaved();
   };
 
+  if (alternativeLayout) return <AlternativeLayoutDialog open title={`Pagar comissão — ${card.driverName}`} onBack={() => setAlternativeLayout(false)} />;
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[94vh] w-[calc(100vw-2rem)] flex-col sm:max-w-6xl">
+  <Dialog open onOpenChange={(o) => !o && onClose()}>
+  <DialogContent className="flex max-h-[94vh] w-[calc(100vw-2rem)] flex-col sm:max-w-6xl">
+  <div className="flex justify-center"><label className="flex items-center gap-2 text-xs text-muted-foreground">Novo layout <Switch checked={alternativeLayout} onCheckedChange={setAlternativeLayout} /></label></div>
         <DialogHeader>
           <DialogTitle>Pagar comissão — {card.driverName}</DialogTitle>
         </DialogHeader>
