@@ -9,6 +9,7 @@ import {
   useFuelings,
   useExpenses,
   useTolls,
+  useTollLocations,
   usePayments,
   useCommissionPayments,
   useDriverEntries,
@@ -875,6 +876,7 @@ function BackupSection() {
   const [fuelings, setFuelings] = useFuelings();
   const [expenses, setExpenses] = useExpenses();
   const [tolls, setTolls] = useTolls();
+  const [cadTolls] = useTollLocations();
   const [payments, setPayments] = usePayments();
   const [commissionPayments, setCommissionPayments] = useCommissionPayments();
   const [driverEntries, setDriverEntries] = useDriverEntries();
@@ -956,6 +958,7 @@ function BackupSection() {
       fuelings,
       expenses,
       tolls,
+      cad_tolls: cadTolls,
       payments,
       commissionPayments,
       driverEntries,
