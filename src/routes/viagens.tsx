@@ -357,7 +357,8 @@ function TripsListSection() {
             widths: ["auto", "*", "*", "*", "auto", "auto", "auto"],
             body: [
               [
-                th("Data"),
+                th("Data de saída"),
+                th("Data de chegada"),
                 th("Origem"),
                 th("Destino"),
                 th("Pecuarista"),
@@ -367,6 +368,7 @@ function TripsListSection() {
               ],
               ...ordered.map((t) => [
                 formatDateBR(t.date),
+                t.arrivalTime ? formatDateBR(t.arrivalTime) : "-",
                 t.origin,
                 t.destination ? DESTINATION_LABELS[t.destination] : "-",
                 t.pecuarista ?? "-",
@@ -377,7 +379,7 @@ function TripsListSection() {
               [
                 {
                   text: `Subtotal (${ordered.length})`,
-                  colSpan: 6,
+                  colSpan: 7,
                   alignment: "right",
                   bold: true,
                   color: PDF_COLORS.primaryDark,
@@ -404,7 +406,7 @@ function TripsListSection() {
       const losses = filtered.filter((t) => t.lostAnimals > 0);
       if (losses.length > 0) {
         content.push(pdfSectionTitle("Perdas registradas"));
-        content.push({ table: { headerRows: 1, widths: ["auto", "*", "*", "*", "auto", "auto", "auto"], body: [[th("Data chegada"), th("Pecuarista"), th("Origem"), th("Destino"), th("Km"), th("Perdas"), th("Valor da perda")], ...losses.map((t) => [formatDateBR(t.arrivalTime ?? t.date), t.pecuarista ?? "-", t.origin, DESTINATION_LABELS[t.destination], String(getDistance(t)), String(t.lostAnimals), formatBRL(t.lostAnimals * t.lostAnimalValue)])] }, layout: pdfTableLayout, fontSize: 9 });
+        content.push({ table: { headerRows: 1, widths: ["auto", "*", "*", "auto", "auto", "auto"], body: [[th("Data chegada"), th("Origem"), th("Destino"), th("Km"), th("Perdas"), th("Valor da perda")], ...losses.map((t) => [formatDateBR(t.arrivalTime ?? t.date), t.origin, DESTINATION_LABELS[t.destination], String(getDistance(t)), String(t.lostAnimals), formatBRL(t.lostAnimals * t.lostAnimalValue)])] }, layout: pdfTableLayout, fontSize: 9 });
       }
 
       const docDefinition = buildPdfDoc({
