@@ -354,40 +354,34 @@ function TripsListSection() {
         content.push({
           table: {
             headerRows: 1,
-            widths: ["auto", "*", "*", "*", "*", "auto", "auto", "auto"],
+            widths: ["auto", "*", "*", "*", "auto", "auto", "auto"],
             body: [
               [
                 th("Data"),
-                th("Pecuarista"),
                 th("Origem"),
                 th("Destino"),
-                th("Tabela"),
+                th("Pecuarista"),
                 th("Km"),
-                th("Perdas"),
-                th("Valor"),
+                th("Valor tabela"),
+                th("Valor final"),
               ],
               ...ordered.map((t) => [
                 formatDateBR(t.date),
-                t.pecuarista ?? "-",
                 t.origin,
                 t.destination ? DESTINATION_LABELS[t.destination] : "-",
-                (() => {
-                  const tbl = tables.find((x) => x.id === t.priceTableId);
-                  return tbl?.name ?? t.priceTableName ?? "-";
-                })(),
+                t.pecuarista ?? "-",
                 String(getDistance(t)),
-                t.lostAnimals > 0 ? formatBRL(t.lostAnimals * t.lostAnimalValue) : "-",
+                formatBRL(t.tableValue),
                 formatBRL(t.finalValue),
               ]),
               [
                 {
                   text: `Subtotal (${ordered.length})`,
-                  colSpan: 7,
+                  colSpan: 6,
                   alignment: "right",
                   bold: true,
                   color: PDF_COLORS.primaryDark,
                 },
-                {},
                 {},
                 {},
                 {},
@@ -407,6 +401,11 @@ function TripsListSection() {
         style: "total",
         margin: [0, 16, 0, 0],
       });
+      const losses = filtered.filter((t) => t.lostAnimals > 0);
+      if (losses.length > 0) {
+        content.push(pdfSectionTitle("Perdas registradas"));
+        content.push({ table: { headerRows: 1, widths: ["auto", "*", "*", "*", "auto", "auto", "auto"], body: [[th("Data chegada"), th("Pecuarista"), th("Origem"), th("Destino"), th("Km"), th("Perdas"), th("Valor da perda")], ...losses.map((t) => [formatDateBR(t.arrivalTime ?? t.date), t.pecuarista ?? "-", t.origin, DESTINATION_LABELS[t.destination], String(getDistance(t)), String(t.lostAnimals), formatBRL(t.lostAnimals * t.lostAnimalValue)])] }, layout: pdfTableLayout, fontSize: 9 });
+      }
 
       const docDefinition = buildPdfDoc({
         title: "Relatório de Viagens",
