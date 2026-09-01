@@ -1564,7 +1564,7 @@ function EditTripDialog({ trip, onSaved }: { trip: Trip; onSaved: () => void }) 
       tableValue,
       finalValue,
       attachments,
-      withoutFueling,
+      withoutFueling: trip.withoutFueling,
     };
     setTrips((prev) => prev.map((p) => (p.id === trip.id ? updated : p)));
     toast.success("Viagem atualizada");
