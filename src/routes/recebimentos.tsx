@@ -20,6 +20,7 @@ import {
   formatDateBR,
   RENT_PERCENT,
   DESTINATION_LABELS,
+  useSlaughterhouses,
   type Payment,
   type Trip,
   type Fueling,
@@ -609,6 +610,8 @@ function ReceiptDialog({ onSaved }: { onSaved: () => void }) {
   const [expenses] = useExpenses();
   const [tolls] = useTolls();
   const [trucks] = useTrucks();
+  const [slaughterhouses] = useSlaughterhouses();
+  const activeSlaughterhouses = slaughterhouses.filter((s) => s.active);
   const [settings] = useSettings();
   const [alternativeLayout, setAlternativeLayout] = useState(false);
   const [truckFilter, setTruckFilter] = useState<string>("__all__");
@@ -983,9 +986,8 @@ value={date}
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">Todos</SelectItem>
-                <SelectItem value="bataguassu">Bataguassu</SelectItem>
-                <SelectItem value="cassilandia">Cassilândia</SelectItem>
+  <SelectItem value="__all__">Todos</SelectItem>
+  {activeSlaughterhouses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

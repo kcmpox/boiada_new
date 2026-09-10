@@ -14,6 +14,7 @@ import {
   useCommissionPayments,
   useDriverEntries,
   useSettings,
+  useSlaughterhouses,
   useNotes,
   uid,
   formatBRL,
@@ -426,6 +427,8 @@ function Panel({
 function PriceTablesSection() {
   const [tables, setTables] = usePriceTables();
   const [settings] = useSettings();
+  const [slaughterhouses] = useSlaughterhouses();
+  const activeSlaughterhouses = slaughterhouses.filter((s) => s.active);
   const [activeDest, setActiveDest] = useState<Destination>("bataguassu");
   const [jsonEditOpen, setJsonEditOpen] = useState(false);
   const [jsonEditTable, setJsonEditTable] = useState<PriceTable | null>(null);
@@ -574,10 +577,10 @@ function PriceTablesSection() {
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex rounded-xl bg-muted p-1">
-            {(Object.keys(DESTINATION_LABELS) as Destination[]).map((dest) => (
+            {activeSlaughterhouses.map((s) => (
               <button
-                key={dest}
-                onClick={() => setActiveDest(dest)}
+                key={s.id}
+                onClick={() => setActiveDest(s.id)}
                 className={cn(
                   "rounded-lg px-4 py-2 text-sm font-semibold transition-all",
                   activeDest === dest
@@ -585,7 +588,7 @@ function PriceTablesSection() {
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {DESTINATION_LABELS[dest]}
+                {s.name}
               </button>
             ))}
           </div>
@@ -1474,8 +1477,9 @@ function BackupSection() {
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => exportData(exportFormat)} className="rounded-lg">
-                <Download className="mr-1.5 h-4 w-4" /> Exportar
-              </Button>
+<Download className="mr-1.5 h-4 w-4" /> Exportar
+  </Button>
+  <Button variant="outline" onClick={() => undefined} className="rounded-lg">Corrigir dados</Button>
               <Select
                 value={exportFormat}
                 onValueChange={(v) => setExportFormat(v as "json" | "boiada")}
