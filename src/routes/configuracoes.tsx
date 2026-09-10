@@ -583,7 +583,7 @@ function PriceTablesSection() {
                 onClick={() => setActiveDest(s.id)}
                 className={cn(
                   "rounded-lg px-4 py-2 text-sm font-semibold transition-all",
-                  activeDest === dest
+                  activeDest === s.id
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
@@ -1797,7 +1797,7 @@ function BackupSection() {
               Confirmação
             </div>
             {wipeLoading || !wipeWord ? (
-              <p className="text-muted-foreground">Carregando palavra do dia…</p>
+              <p className="text-muted-foreground">Carregando palavra do dia��</p>
             ) : (
               <>
                 <p className="text-muted-foreground">
