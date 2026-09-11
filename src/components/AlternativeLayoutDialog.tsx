@@ -51,9 +51,9 @@ export function AlternativeLayoutDialog({ open, title, onBack }: { open: boolean
           </div>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">1. Filtros do recebimento</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="sr-only">Filtros do recebimento</CardTitle></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">
-              <div><Label>Caminhão <span className="text-destructive">*</span></Label><Select value={truckId} onValueChange={setTruckId}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{trucks.filter((truck) => truck.active).map((truck) => <SelectItem key={truck.id} value={truck.id}>{truck.plate}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label>Caminhão <span className="text-destructive">*</span></Label><Select value={truckId} onValueChange={setTruckId}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{trucks.map((truck) => <SelectItem key={truck.id} value={truck.id}>{truck.plate}{truck.name ? ` — ${truck.name}` : ""}</SelectItem>)}</SelectContent></Select></div>
               <div><Label>Frigorífico <span className="text-destructive">*</span></Label><Select value={destination} onValueChange={setDestination}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{slaughterhouses.filter((item) => item.active).map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select></div>
               <div><Label htmlFor="date-from">Data inicial <span className="text-destructive">*</span></Label><Input id="date-from" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></div>
             </CardContent>
@@ -62,7 +62,7 @@ export function AlternativeLayoutDialog({ open, title, onBack }: { open: boolean
           {ready && <Card><CardHeader><CardTitle className="text-base">2. Viagens e lançamentos</CardTitle></CardHeader><CardContent><p className="py-4 text-center text-sm text-muted-foreground">Esta sessão está em construção</p></CardContent></Card>}
 
           <Card>
-            <CardHeader><CardTitle className="text-base">3. Resumo financeiro</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="sr-only">Resumo financeiro</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="grid gap-3 sm:grid-cols-4"><div><p className="text-sm text-muted-foreground">Valor bruto</p><p className="font-semibold">{money(grossValue)}</p></div><div><p className="text-sm text-muted-foreground">Aluguel de 10%</p><p className="font-semibold text-destructive">- {money(rentValue)}</p></div><div><p className="text-sm text-muted-foreground">Reembolsos e ressarcimentos</p><p className="font-semibold">{money(0)}</p></div><div><p className="text-sm text-muted-foreground">Valor esperado</p><p className="text-lg font-bold">{money(expectedValue)}</p></div></div>
               <Separator />
