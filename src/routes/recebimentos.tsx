@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommissionsSection } from "@/components/sections/CommissionsSection";
 import { AdjustmentsSection } from "@/components/sections/AdjustmentsSection";
+import { OtherFinancialEntryDialog } from "@/components/OtherFinancialEntryDialog";
 import { Banknote as BanknoteIcon, Users as UsersIcon, Scale as ScaleIcon, History, Building2 } from "lucide-react";
 import {
   usePayments,
@@ -125,8 +126,8 @@ function ReceiptsPage() {
           {section === "historico" && <ReceiptsTab />}
           {section === "bataguassu" && <ConstructionNotice title="Bataguassu" />}
           {section === "cassilandia" && <ConstructionNotice title="Cassilândia" />}
-          {section === "outrosDescontos" && <ConstructionNotice title="Outros Descontos" />}
-          {section === "outrosReembolsos" && <ConstructionNotice title="Outros Reembolsos" />}
+          {section === "outrosDescontos" && <div className="flex flex-col gap-4"><div><h2 className="text-2xl font-bold">Outros Descontos</h2><p className="text-sm text-muted-foreground">Registre descontos adicionais vinculados a viagens.</p></div><OtherFinancialEntryDialog mode="desconto" /></div>}
+          {section === "outrosReembolsos" && <div className="flex flex-col gap-4"><div><h2 className="text-2xl font-bold">Outros Reembolsos</h2><p className="text-sm text-muted-foreground">Registre reembolsos adicionais vinculados a viagens.</p></div><OtherFinancialEntryDialog mode="reembolso" /></div>}
         </div>
       </div>
   </TabsContent>

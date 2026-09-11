@@ -234,6 +234,7 @@ export interface OtherDeductionReimbursement {
   tripId?: string;
   fuelingId?: string;
   type: "acrescimo" | "abatimento";
+  category?: "diesel" | "outros" | "multa_contratual";
   amount: number;
   description: string;
   createdAt: string;
