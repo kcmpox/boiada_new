@@ -2,7 +2,15 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 
 export type CattleType = "magro" | "gordo";
 
-export type Destination = "cassilandia" | "bataguassu";
+export type Destination = string;
+
+export interface SlaughterhouseContact {
+  id: string;
+  name: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+}
 
 export interface Attachment {
   id: string;
@@ -185,6 +193,8 @@ export interface Slaughterhouse {
   cnpj?: string;
   phone?: string;
   contact?: string;
+  financialContacts?: SlaughterhouseContact[];
+  otherContacts?: SlaughterhouseContact[];
   destination?: Destination;
   notes?: string;
   active: boolean;
@@ -224,6 +234,7 @@ export interface OtherDeductionReimbursement {
   tripId?: string;
   fuelingId?: string;
   type: "acrescimo" | "abatimento";
+  category?: "diesel" | "outros" | "multa_contratual";
   amount: number;
   description: string;
   createdAt: string;
@@ -417,8 +428,12 @@ export const useCommissionPayments = () =>
   useStored<CommissionPayment[]>(KEYS.commissionPayments, []);
 export const useSettings = () => useStored<AppSettings>(KEYS.settings, DEFAULT_SETTINGS);
 export const useNotes = () => useStored<Note[]>(KEYS.notes, []);
+const DEFAULT_SLAUGHTERHOUSES: Slaughterhouse[] = [
+  { id: "bataguassu", name: "Bataguassu", city: "Bataguassu", state: "MS", active: true, financialContacts: [], otherContacts: [] },
+  { id: "cassilandia", name: "Cassilândia", city: "Cassilândia", state: "MS", active: true, financialContacts: [], otherContacts: [] },
+];
 export const useSlaughterhouses = () =>
-  useStored<Slaughterhouse[]>(KEYS.slaughterhouses, []);
+  useStored<Slaughterhouse[]>(KEYS.slaughterhouses, DEFAULT_SLAUGHTERHOUSES);
 
 // --- Legacy hooks for backward compat (configuracoes import) ---
 export const usePriceTiers = () => useStored<OldPriceTier[]>(KEYS.legacyTiers, []);
@@ -590,15 +605,20 @@ export function paymentDiscrepancy(payment: Payment, adjustments: PaymentAdjustm
   return paymentFinalValue(payment, adjustments) - payment.expectedValue;
 }
 
-export const DESTINATION_LABELS: Record<Destination, string> = {
+export const DESTINATION_LABELS: Record<string, string> = {
   cassilandia: "Cassilândia",
   bataguassu: "Bataguassu",
 };
 
-export const DESTINATION_PREFIX: Record<Destination, string> = {
+export const DESTINATION_PREFIX: Record<string, string> = {
   cassilandia: "CAS",
   bataguassu: "BAT",
 };
+
+export function destinationLabel(id: string | undefined, slaughterhouses: Slaughterhouse[] = []): string {
+  if (!id) return "-";
+  return slaughterhouses.find((s) => s.id === id)?.name ?? DESTINATION_LABELS[id] ?? id;
+}
 
 // --- Driver entry helpers ---
 
