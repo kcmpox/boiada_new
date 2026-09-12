@@ -510,7 +510,7 @@ function ReceiptsTab() {
                     </div>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm sm:grid-cols-4">
                       <div>
-                        <span className="text-muted-foreground">Bruto</span>
+                        <span className="text-muted-foreground">Bruto1</span>
                         <p className="font-semibold">{formatBRL(p.grossValue)}</p>
                       </div>
                       <div>
@@ -1241,7 +1241,7 @@ value={date}
             Resumo financeiro
           </p>
           <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-5">
-            <Summary label="Brutoo" value={formatBRL(grossValue)} />
+            <Summary label="Bruto" value={formatBRL(grossValue)} />
             <Summary
               label={`Aluguel ${(RENT_PERCENT * 100).toFixed(0)}%`}
               value={`- ${formatBRL(rentValue)}`}
