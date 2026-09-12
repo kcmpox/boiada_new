@@ -510,7 +510,7 @@ function ReceiptsTab() {
                     </div>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm sm:grid-cols-4">
                       <div>
-                        <span className="text-muted-foreground">Bruto1</span>
+                        <span className="text-muted-foreground">Bruto</span>
                         <p className="font-semibold">{formatBRL(p.grossValue)}</p>
                       </div>
                       <div>
