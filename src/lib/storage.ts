@@ -351,7 +351,9 @@ const KEYS = {
   tollLocations: "gt_toll_locations",
   payments: "gt_payments",
   adjustments: "gt_payment_adjustments",
-  otherDeductionReimbursements: "gt_other_deduction_reimbursements",
+  otherDeductionReimbursements: "gt_other_deduction_reimbursements", // legado
+  deductions: "gt_deductions",
+  reimbursements: "gt_reimbursements",
   bonuses: "gt_pricing_bonuses",
   driverEntries: "gt_driver_entries",
   commissionPayments: "gt_commission_payments",
@@ -421,7 +423,19 @@ export const useTolls = () => useStored<Toll[]>(KEYS.tolls, []);
 export const useTollLocations = () => useStored<TollLocation[]>(KEYS.tollLocations, []);
 export const usePayments = () => useStored<Payment[]>(KEYS.payments, []);
 export const useAdjustments = () => useStored<PaymentAdjustment[]>(KEYS.adjustments, []);
+const useSeparatedEntries = (key: string, type: OtherDeductionReimbursement["type"]) => {
+  const [entries, setEntries] = useStored<OtherDeductionReimbursement[]>(key, []);
+  useEffect(() => {
+    if (entries.length === 0) {
+      const legacy = read<OtherDeductionReimbursement[]>(KEYS.otherDeductionReimbursements, []).filter((entry) => entry.type === type);
+      if (legacy.length) setEntries(legacy);
+    }
+  }, [entries.length, setEntries, type]);
+  return [entries, setEntries] as const;
+};
 export const useOtherDeductionReimbursements = () => useStored<OtherDeductionReimbursement[]>(KEYS.otherDeductionReimbursements, []);
+export const useDeductions = () => useSeparatedEntries(KEYS.deductions, "abatimento");
+export const useReimbursements = () => useSeparatedEntries(KEYS.reimbursements, "acrescimo");
 export const useBonuses = () => useStored<PricingBonus[]>(KEYS.bonuses, []);
 export const useDriverEntries = () => useStored<DriverEntry[]>(KEYS.driverEntries, []);
 export const useCommissionPayments = () =>

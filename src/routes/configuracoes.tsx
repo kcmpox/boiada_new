@@ -885,6 +885,7 @@ function BackupSection() {
   const [commissionPayments, setCommissionPayments] = useCommissionPayments();
   const [driverEntries, setDriverEntries] = useDriverEntries();
   const [notes, setNotes] = useNotes();
+  const [slaughterhouses] = useSlaughterhouses();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "boiada">("json");
   const [importFormat, setImportFormat] = useState<"json" | "boiada">("json");
@@ -956,6 +957,7 @@ function BackupSection() {
       version: 2,
       exportedAt: new Date().toISOString(),
       trucks,
+      slaughterhouses,
       drivers,
       priceTables: tables,
       trips,
@@ -967,6 +969,8 @@ function BackupSection() {
       commissionPayments,
       driverEntries,
       notes,
+      deduction: JSON.parse(localStorage.getItem("gt_deductions") || "[]"),
+      reimbursement: JSON.parse(localStorage.getItem("gt_reimbursements") || "[]"),
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(data, null, 2)], {
