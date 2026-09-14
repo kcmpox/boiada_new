@@ -885,11 +885,13 @@ function BackupSection() {
   const [commissionPayments, setCommissionPayments] = useCommissionPayments();
   const [driverEntries, setDriverEntries] = useDriverEntries();
   const [notes, setNotes] = useNotes();
+  const [slaughterhouses] = useSlaughterhouses();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "boiada">("json");
   const [importFormat, setImportFormat] = useState<"json" | "boiada">("json");
 
   const [importPayload, setImportPayload] = useState<Record<ImportKey, unknown[]> | null>(null);
+  const [importExtras, setImportExtras] = useState<{ slaughterhouses: unknown[]; toll_locations: unknown[]; deduction: unknown[]; reimbursement: unknown[]; theme: string | null }>({ slaughterhouses: [], toll_locations: [], deduction: [], reimbursement: [], theme: null });
   const [importSel, setImportSel] = useState<Record<ImportKey, boolean>>({
     trucks: true,
     drivers: true,
@@ -956,6 +958,7 @@ function BackupSection() {
       version: 2,
       exportedAt: new Date().toISOString(),
       trucks,
+      slaughterhouses,
       drivers,
       priceTables: tables,
       trips,
@@ -967,6 +970,10 @@ function BackupSection() {
       commissionPayments,
       driverEntries,
       notes,
+      deduction: JSON.parse(localStorage.getItem("gt_deductions") || "[]"),
+      reimbursement: JSON.parse(localStorage.getItem("gt_reimbursements") || "[]"),
+      toll_locations: JSON.parse(localStorage.getItem("gt_toll_locations") || "[]"),
+      gt_theme: localStorage.getItem("gt_theme"),
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -1195,6 +1202,13 @@ function BackupSection() {
       } else {
         parsed = JSON.parse(await file.text());
       }
+      setImportExtras({
+        slaughterhouses: Array.isArray(parsed.slaughterhouses) ? parsed.slaughterhouses : [],
+        toll_locations: Array.isArray(parsed.toll_locations) ? parsed.toll_locations : [],
+        deduction: Array.isArray(parsed.deduction) ? parsed.deduction : [],
+        reimbursement: Array.isArray(parsed.reimbursement) ? parsed.reimbursement : [],
+        theme: typeof parsed.gt_theme === "string" ? parsed.gt_theme : typeof parsed.theme === "string" ? parsed.theme : null,
+      });
       const payload: Record<ImportKey, unknown[]> = {
         trucks: Array.isArray(parsed.trucks) ? (parsed.trucks as unknown[]) : [],
         drivers: Array.isArray(parsed.drivers) ? (parsed.drivers as unknown[]) : [],
@@ -1309,6 +1323,11 @@ function BackupSection() {
       if (has("driverEntries"))
         setDriverEntries((p) => (importByRecord ? mergeById(p, driverEntries_) : driverEntries_));
       if (has("notes")) setNotes((p) => (importByRecord ? mergeById(p, notes_) : notes_));
+      localStorage.setItem("gt_slaughterhouses", JSON.stringify(importExtras.slaughterhouses));
+      localStorage.setItem("gt_toll_locations", JSON.stringify(importExtras.toll_locations));
+      localStorage.setItem("gt_deductions", JSON.stringify(importExtras.deduction));
+      localStorage.setItem("gt_reimbursements", JSON.stringify(importExtras.reimbursement));
+      if (importExtras.theme !== null) localStorage.setItem("gt_theme", importExtras.theme);
       toast.success(`Importado: ${selectedKeys.map((k) => IMPORT_LABELS[k]).join(", ")}`);
       setImportPayload(null);
     } catch (err) {
@@ -1434,6 +1453,12 @@ function BackupSection() {
       return;
     }
     const t = wipeTargets();
+    if (wipeMode === "agressivo") {
+      localStorage.clear();
+    } else if (wipeMode === "geral") {
+      localStorage.removeItem("gt_deductions");
+      localStorage.removeItem("gt_reimbursements");
+    }
     if (t.size === 0) {
       toast.error("Selecione ao menos uma categoria");
       return;
